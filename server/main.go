@@ -7,19 +7,25 @@ import (
 )
 
 type Person struct {
-	Name   string
-	Friend *Person
-	_      string
+	Name    string
+	Friends []*Person
 }
 
 func main() {
-	p := Person{Name: "John", Friend: &Person{Name: "John", Friend: nil}}
+	p := Person{
+		Name:    "John",
+		Friends: []*Person{{Name: "Bob"}, {Name: "Alice"}},
+	}
 	b, err := encoding.Marshal(p)
-
 	if err != nil {
 		panic(err)
 	}
-	fmt.Println(b)
+	var s Person
+	err = encoding.Unmarshal(b, &s)
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println(s)
 
 	// s, err := protocol.New(
 	// 	protocol.WithPort(":12345"),

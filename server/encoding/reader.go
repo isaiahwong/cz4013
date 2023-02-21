@@ -1,6 +1,8 @@
 package encoding
 
-import "io"
+import (
+	"io"
+)
 
 // BufferReader reads from a byte slice.
 type bufferReader struct {
@@ -28,7 +30,6 @@ func (r *bufferReader) Read(b []byte) (n int, err error) {
 	if r.offset >= int64(len(r.buffer)) {
 		return 0, io.EOF
 	}
-
 	n = copy(b, r.buffer[r.offset:])
 	r.offset += int64(n)
 	return
@@ -36,7 +37,7 @@ func (r *bufferReader) Read(b []byte) (n int, err error) {
 
 // Slice returns a sub-slice of the next n bytes of the underlying buffer
 // Mutating the offset
-func (r *bufferReader) Slice(n int) ([]byte, error) {
+func (r *bufferReader) Slice(n uint) ([]byte, error) {
 	// Exceeds the buffer length
 	if r.offset+int64(n) > int64(len(r.buffer)) {
 		return nil, io.EOF

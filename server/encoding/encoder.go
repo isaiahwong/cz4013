@@ -9,8 +9,6 @@ import (
 	"reflect"
 )
 
-var LittleEndian = binary.LittleEndian
-
 type Encoder struct {
 	out io.Writer
 }
@@ -30,6 +28,7 @@ func Marshal(v interface{}) ([]byte, error) {
 	return nil, errors.New("Marshal: Failed to cast e.out to bytes.Buffer")
 }
 
+// newEncoder creates a new encoder.
 func newEncoder() *Encoder {
 	var buffer bytes.Buffer
 	buffer.Grow(64)
@@ -56,23 +55,18 @@ func (e *Encoder) write(p []byte) error {
 }
 
 // writeBool writes a single boolean value into the buffer
-func (e *Encoder) writeBool(v bool) {
-	b := make([]byte, 1)
-	b[0] = 0
-	if v {
-		b[0] = 1
-	}
-	e.write(b)
+func (e *Encoder) writeBool(v bool) error {
+	return binary.Write(e.out, binary.LittleEndian, v)
 }
 
 // writeString writes a string prefixed with the int size.
 func (e *Encoder) writeString(v string) error {
 	// Write the size of the string
-	err := binary.Write(e.out, binary.LittleEndian, uint32(len(v)))
+	err := e.writeInt32(int32(len(v)))
 	if err != nil {
 		return err
 	}
-	return e.write([]byte(v))
+	return binary.Write(e.out, binary.LittleEndian, []byte(v))
 }
 
 // writeInt32 writes a 32 bit integer
@@ -118,7 +112,7 @@ func (e *Encoder) writeFloat32(f float32) error {
 	// We only need 4 bytes for 32
 	buf := make([]byte, 4)
 	binary.LittleEndian.PutUint32(buf, bits)
-	return e.write(buf)
+	return binary.Write(e.out, binary.LittleEndian, buf)
 }
 
 // writeFloat64 serializes float64 or double.
@@ -128,5 +122,5 @@ func (e *Encoder) writeFloat64(f float64) error {
 	// We only need 4 bytes for 32
 	buf := make([]byte, 4)
 	binary.LittleEndian.PutUint64(buf, bits)
-	return e.write(buf)
+	return binary.Write(e.out, binary.LittleEndian, buf)
 }

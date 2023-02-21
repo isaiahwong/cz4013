@@ -13,13 +13,11 @@ type Codec interface {
 
 func GetCodec(v interface{}) (Codec, error) {
 	rv := reflect.Indirect(reflect.ValueOf(v))
-	return getCodec(rv.Type())
+	return getCodec(rv)
 }
 
-func getCodec(t reflect.Type) (Codec, error) {
+func getCodec(t reflect.Value) (Codec, error) {
 	switch t.Kind() {
-	case reflect.Ptr:
-		fallthrough
 	case reflect.String:
 		return new(stringCodec), nil
 	case reflect.Bool:
@@ -36,32 +34,35 @@ func getCodec(t reflect.Type) (Codec, error) {
 		return new(float32Codec), nil
 	case reflect.Float64:
 		return new(float64Codec), nil
+	case reflect.Ptr:
+		return newPtrCodec(t)
 	case reflect.Struct:
 		return newStructCodec(t)
+	case reflect.Slice:
+		switch t.Type().Elem().Kind() {
+		case reflect.Ptr:
+			return newSlicePtrCodec(t)
+		default:
+			return newSliceCodec(t)
+		}
+
 	}
 	return nil, errors.New("Unsupported type " + t.String())
-}
-
-func newStructCodec(t reflect.Type) (Codec, error) {
-	s := new(structCodec)
-	err := s.genCodec(t)
-	if err != nil {
-		return nil, err
-	}
-	return s, nil
 }
 
 type boolCodec struct{}
 
 // Encode encodes a value into the encoder.
 func (c *boolCodec) Encode(e *Encoder, rv reflect.Value) error {
-	e.writeBool(rv.Bool())
-	return nil
+	return e.writeBool(rv.Bool())
 }
 
 // Decode decodes into a reflect value from the decoder.
 func (c *boolCodec) Decode(d *Decoder, rv reflect.Value) (err error) {
-	return nil
+	if b, err := d.readBool(); err == nil {
+		rv.SetBool(b)
+	}
+	return
 }
 
 type stringCodec struct{}
@@ -73,7 +74,10 @@ func (c *stringCodec) Encode(e *Encoder, rv reflect.Value) error {
 
 // Decode decodes into a reflect value from the decoder.
 func (c *stringCodec) Decode(d *Decoder, rv reflect.Value) (err error) {
-	return nil
+	if s, err := d.readString(); err == nil {
+		rv.SetString(s)
+	}
+	return
 }
 
 type int32Codec struct{}
@@ -85,7 +89,10 @@ func (c *int32Codec) Encode(e *Encoder, rv reflect.Value) error {
 
 // Decode decodes into a reflect value from the decoder.
 func (c *int32Codec) Decode(d *Decoder, rv reflect.Value) (err error) {
-	return nil
+	if b, err := d.readInt32(); err == nil {
+		rv.SetInt(int64(b))
+	}
+	return
 }
 
 type int64Codec struct{}
@@ -97,7 +104,10 @@ func (c *int64Codec) Encode(e *Encoder, rv reflect.Value) error {
 
 // Decode decodes into a reflect value from the decoder.
 func (c *int64Codec) Decode(d *Decoder, rv reflect.Value) (err error) {
-	return nil
+	if b, err := d.readInt64(); err == nil {
+		rv.SetInt(b)
+	}
+	return
 }
 
 type uint32Codec struct{}
@@ -109,7 +119,10 @@ func (c *uint32Codec) Encode(e *Encoder, rv reflect.Value) error {
 
 // Decode decodes into a reflect value from the decoder.
 func (c *uint32Codec) Decode(d *Decoder, rv reflect.Value) (err error) {
-	return nil
+	if b, err := d.readUint32(); err == nil {
+		rv.SetUint(uint64(b))
+	}
+	return
 }
 
 type uint64Codec struct{}
@@ -121,35 +134,121 @@ func (c *uint64Codec) Encode(e *Encoder, rv reflect.Value) error {
 
 // Decode decodes into a reflect value from the decoder.
 func (c *uint64Codec) Decode(d *Decoder, rv reflect.Value) (err error) {
-	return nil
+	if b, err := d.readUint64(); err == nil {
+		rv.SetUint(uint64(b))
+	}
+	return
 }
 
 type float32Codec struct{}
 
 // Encode encodes a value into the encoder.
 func (c *float32Codec) Encode(e *Encoder, rv reflect.Value) error {
-	e.writeFloat32(float32(rv.Float()))
-	return nil
+	return e.writeFloat32(float32(rv.Float()))
 }
 
 // Decode decodes into a reflect value from the decoder.
 func (c *float32Codec) Decode(d *Decoder, rv reflect.Value) (err error) {
-	return nil
+	if b, err := d.readFloat32(); err == nil {
+		rv.SetFloat(float64(b))
+	}
+	return
 }
 
 type float64Codec struct{}
 
 // Encode encodes a value into the encoder.
 func (c *float64Codec) Encode(e *Encoder, rv reflect.Value) error {
-	e.writeFloat64(rv.Float())
-	return nil
+	return e.writeFloat64(rv.Float())
 }
 
 // Decode decodes into a reflect value from the decoder.
 func (c *float64Codec) Decode(d *Decoder, rv reflect.Value) (err error) {
-	return nil
+	if b, err := d.readFloat64(); err == nil {
+		rv.SetFloat(b)
+	}
+	return
 }
 
+// ============================================================================
+// Ptr Codec
+// ============================================================================
+type ptrCodec struct {
+	codec Codec
+}
+
+func newPtrCodec(t reflect.Value) (Codec, error) {
+	switch t.Kind() {
+	case reflect.Ptr:
+		break
+	default:
+		return nil, errors.New("Expected pointer type")
+	}
+
+	// Handle nils to prevent cases like infinite recursion
+	// During decode, we retrieve the codecs as needed
+	if t.IsNil() {
+		return new(ptrCodec), nil
+	}
+
+	codec, err := getCodec(t.Elem())
+	if err != nil {
+		return nil, err
+	}
+
+	return &ptrCodec{
+		codec: codec,
+	}, nil
+}
+
+// Encode encodes a value into the encoder.
+func (p *ptrCodec) Encode(e *Encoder, rv reflect.Value) (err error) {
+	// Mark as nil if the pointer is nil.
+	if rv.IsNil() {
+		e.writeBool(true)
+		return
+	}
+
+	if p.codec == nil {
+		return errors.New("Codec not supplied to ptrCodec")
+	}
+	// Mark as not nil.
+	e.writeBool(false)
+	err = p.codec.Encode(e, rv.Elem())
+	return
+}
+
+// Decode decodes into a reflect value from the decoder.
+func (p *ptrCodec) Decode(d *Decoder, rv reflect.Value) (err error) {
+	isNil, err := d.readBool()
+	if err != nil {
+		return err
+	}
+
+	if isNil {
+		return
+	}
+
+	if rv.IsNil() {
+		rv.Set(reflect.New(rv.Type().Elem()))
+	}
+
+	// Get the codec at decode stage because we don't want to
+	// go into a recursive loop for nested nil pointers.
+	if p.codec == nil {
+		codec, err := getCodec(rv.Elem())
+		if err != nil {
+			return err
+		}
+		p.codec = codec
+	}
+
+	return p.codec.Decode(d, rv.Elem())
+}
+
+// ============================================================================
+// Struct Codec
+// ============================================================================
 type (
 	structCodec struct {
 		fields []*fieldCodec
@@ -160,18 +259,22 @@ type (
 	}
 )
 
-func (s *structCodec) genCodec(t reflect.Type) error {
-	l := t.NumField()
-	fields := []int{}
-	for i := 0; i < l; i++ {
-		fields = append(fields, i)
+func newStructCodec(t reflect.Value) (Codec, error) {
+	s := new(structCodec)
+	err := s.genCodec(t)
+	if err != nil {
+		return nil, err
 	}
+	return s, nil
+}
 
-	s.fields = make([]*fieldCodec, 0, len(fields))
+func (s *structCodec) genCodec(t reflect.Value) error {
+	l := t.NumField()
+	s.fields = []*fieldCodec{}
 
-	for _, i := range fields {
+	for i := 0; i < l; i++ {
 		field := t.Field(i)
-		codec, err := getCodec(field.Type)
+		codec, err := getCodec(field)
 		if err != nil {
 			return err
 		}
@@ -182,6 +285,7 @@ func (s *structCodec) genCodec(t reflect.Type) error {
 			codec: codec,
 		})
 	}
+
 	return nil
 }
 
@@ -190,6 +294,59 @@ func (s *structCodec) Encode(e *Encoder, rv reflect.Value) (err error) {
 	for _, i := range s.fields {
 
 		if err = i.codec.Encode(e, rv.Field(i.index)); err != nil {
+			return err
+		}
+	}
+	return
+}
+
+// Decode decodes into a reflect value from the decoder.
+func (s *structCodec) Decode(d *Decoder, rv reflect.Value) (err error) {
+	for _, i := range s.fields {
+		v := rv.Field(i.index)
+		switch {
+		case v.Kind() == reflect.Ptr:
+			err = i.codec.Decode(d, v)
+		case v.CanSet():
+			err = i.codec.Decode(d, reflect.Indirect(v))
+		}
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// ============================================================================
+// Slice Codec
+// ============================================================================
+type sliceCodec struct {
+	codec Codec
+}
+
+func newSliceCodec(t reflect.Value) (Codec, error) {
+	// Do not provide codec for empty slice
+	if t.Len() == 0 {
+		return &sliceCodec{}, nil
+	}
+
+	codec, err := getCodec(t.Index(0))
+	if err != nil {
+		return nil, err
+	}
+
+	return &sliceCodec{
+		codec: codec,
+	}, nil
+}
+
+// Encode encodes a value into the encoder.
+func (s *sliceCodec) Encode(e *Encoder, rv reflect.Value) (err error) {
+	l := rv.Len()
+	e.writeUint64(uint64(l))
+	for i := 0; i < l; i++ {
+		v := reflect.Indirect(rv.Index(i).Addr())
+		if err = s.codec.Encode(e, v); err != nil {
 			return
 		}
 	}
@@ -197,19 +354,104 @@ func (s *structCodec) Encode(e *Encoder, rv reflect.Value) (err error) {
 }
 
 // Decode decodes into a reflect value from the decoder.
-func (c *structCodec) Decode(d *Decoder, rv reflect.Value) (err error) {
-	// for _, i := range c {
-	// 	v := rv.Field(i.Index)
-	// 	switch {
-	// 	case v.Kind() == reflect.Ptr:
-	// 		err = i.Codec.DecodeTo(d, v)
-	// 	case v.CanSet():
-	// 		err = i.Codec.DecodeTo(d, reflect.Indirect(v))
-	// 	}
+func (s *sliceCodec) Decode(d *Decoder, rv reflect.Value) (err error) {
+	var l uint64
+	if l, err = d.readUint64(); err == nil && l > 0 {
+		rv.Set(reflect.MakeSlice(rv.Type(), int(l), int(l)))
+		for i := 0; i < int(l); i++ {
+			v := reflect.Indirect(rv.Index(i))
 
-	// 	if err != nil {
-	// 		return
-	// 	}
-	// }
-	return nil
+			// Get Codec at runtime
+			if s.codec == nil {
+				codec, err := getCodec(v)
+				if err != nil {
+					return err
+				}
+				s.codec = codec
+			}
+
+			if err = s.codec.Decode(d, v); err != nil {
+				return
+			}
+		}
+	}
+	return
+}
+
+// ============================================================================
+// Slice Ptr Codec
+// ============================================================================
+type slicePtrCodec struct {
+	codec Codec
+	type_ reflect.Type
+}
+
+func newSlicePtrCodec(t reflect.Value) (Codec, error) {
+	// Do not provide codec for empty slice
+	if t.Len() == 0 {
+		return &slicePtrCodec{
+			type_: t.Type().Elem().Elem(),
+		}, nil
+	}
+
+	codec, err := getCodec(t.Index(0).Elem())
+	if err != nil {
+		return nil, err
+	}
+
+	return &slicePtrCodec{
+		codec: codec,
+		type_: t.Type().Elem().Elem(),
+	}, nil
+}
+
+// Encode encodes a value into the encoder.
+func (c *slicePtrCodec) Encode(e *Encoder, rv reflect.Value) (err error) {
+	l := rv.Len()
+	e.writeUint64(uint64(l))
+
+	for i := 0; i < l; i++ {
+		v := rv.Index(i)
+		e.writeBool(v.IsNil())
+		if !v.IsNil() {
+			if err = c.codec.Encode(e, reflect.Indirect(v)); err != nil {
+				return err
+			}
+		}
+	}
+	return
+}
+
+// Decode decodes into a reflect value from the decoder.
+func (c *slicePtrCodec) Decode(d *Decoder, rv reflect.Value) (err error) {
+	var l uint64
+	var isNil bool
+	if l, err = d.readUint64(); err == nil && l > 0 {
+
+		rv.Set(reflect.MakeSlice(rv.Type(), int(l), int(l)))
+		for i := 0; i < int(l); i++ {
+
+			if isNil, err = d.readBool(); !isNil {
+				if err != nil {
+					return err
+				}
+
+				ptr := rv.Index(i)
+				ptr.Set(reflect.New(c.type_))
+
+				if c.codec == nil {
+					codec, err := getCodec(ptr.Elem())
+					if err != nil {
+						return err
+					}
+					c.codec = codec
+				}
+
+				if err = c.codec.Decode(d, reflect.Indirect(ptr)); err != nil {
+					return
+				}
+			}
+		}
+	}
+	return
 }
