@@ -15,7 +15,7 @@ this only works for windows
 for further reference refer to: https://stackoverflow.com/questions/12737293/how-do-i-resolve-the-java-net-bindexception-address-already-in-use-jvm-bind
 */
 
-public class Server{
+public class Server {
     static  DatagramSocket socket;
     static int PORT = 17;
  public static void main(String[] argv) {
