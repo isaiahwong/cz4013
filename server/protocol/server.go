@@ -1,10 +1,10 @@
 package protocol
 
 import (
+	"fmt"
 	"net"
 
 	"github.com/isaiahwong/cz4013/common"
-	"github.com/isaiahwong/cz4013/encoding"
 	"github.com/isaiahwong/cz4013/rpc"
 	"github.com/sirupsen/logrus"
 )
@@ -56,6 +56,7 @@ func (s *Server) handleSession(sess *Session) {
 			s.logger.WithError(err).Error("Unable to accept stream, closing server")
 			return
 		}
+		fmt.Println("Accepted stream")
 		go s.handleRequest(stream)
 	}
 }
@@ -63,21 +64,26 @@ func (s *Server) handleSession(sess *Session) {
 func (s *Server) handleRequest(stream *Stream) {
 	defer stream.Close()
 
-	buf := make([]byte, 1024)
+	buf := make([]byte, 65507)
 	// Process requests
-	stream.Read(buf)
-	// Unmarhsal message
-	m := new(rpc.Message)
-	err := encoding.Unmarshal(buf, m)
+	n, err := stream.Read(buf)
 	if err != nil {
-		s.logger.WithError(err).Error("Unable to unmarshal message")
+		s.logger.WithError(err).Error("Unable to read from stream")
 		return
 	}
+	fmt.Println(buf[:n])
+	// // Unmarhsal message
+	// m := new(rpc.Message)
+	// err = encoding.Unmarshal(buf[:n], m)
+	// if err != nil {
+	// 	s.logger.WithError(err).Error("Unable to unmarshal message")
+	// 	return
+	// }
 
-	_ = s.rpc.HandleRequest(m)
+	// _ = s.rpc.HandleRequest(m)
 
 	// Write return message
-	stream.Write(buf)
+	// stream.Write(buf)
 
 }
 

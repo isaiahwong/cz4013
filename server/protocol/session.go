@@ -170,7 +170,6 @@ func (s *Session) recvLoop() {
 			if hdr.Length() <= 0 {
 				continue
 			}
-
 			newbuf := make([]byte, int(hdr.Length()))
 			copy(newbuf, b[headerSize:headerSize+int(hdr.Length())])
 			s.streamMux.Lock()
@@ -197,6 +196,12 @@ func (s *Session) recvLoop() {
 			// 	return
 			// }
 
+		case ACK:
+			s.streamMux.Lock()
+			if stream, ok := s.streams[sid]; ok {
+				stream.notifyACKEvent()
+			}
+			s.streamMux.Unlock()
 		case FIN:
 			s.streamMux.Lock()
 			if stream, ok := s.streams[sid]; ok {

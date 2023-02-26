@@ -27,6 +27,7 @@ type Stream struct {
 
 	// Events
 	chRead chan struct{}
+	chAck  chan struct{}
 	chFin  chan struct{}
 	chDie  chan struct{}
 }
@@ -46,6 +47,7 @@ func NewStream(sess *Session, sid uint32, frameSize int, addr *net.UDPAddr) *Str
 	s.session = sess
 	s.addr = addr
 	s.chRead = make(chan struct{}, 1)
+	s.chAck = make(chan struct{}, 1)
 	s.chFin = make(chan struct{})
 	s.chDie = make(chan struct{})
 	return s
@@ -77,29 +79,30 @@ func (s *Stream) Close() error {
 }
 
 // Implements io.Reader
-func (s *Stream) Read(b []byte) (n int, err error) {
+func (s *Stream) Read(b []byte) (int, error) {
+	var n int
 	for {
-		n, err = s.read(b)
+		n += s.read(b)
+		flag, err := s.waitRead()
 
-		if err == ErrMayBlock {
-			err = s.waitRead()
-			n = 0
-			return
+		if err != nil {
+			return n, err
 		}
-		return n, err
+		if flag == ACK {
+			return n, nil
+		}
 	}
 }
 
-func (s *Stream) read(b []byte) (n int, err error) {
+func (s *Stream) read(b []byte) (n int) {
 	if len(b) == 0 {
-		return 0, nil
+		return 0
 	}
 
 	s.bufferMux.Lock()
 	if len(s.buffers) > 0 {
 		n = copy(b, s.buffers[0])
 		s.buffers[0] = s.buffers[0][n:]
-
 		// Read finish
 		if len(s.buffers[0]) == 0 {
 			s.buffers[0] = nil
@@ -107,20 +110,10 @@ func (s *Stream) read(b []byte) (n int, err error) {
 		}
 	}
 	s.bufferMux.Unlock()
-
-	if n > 0 {
-		return n, nil
-	}
-
-	select {
-	case <-s.chDie:
-		return 0, io.EOF
-	default:
-		return 0, ErrMayBlock
-	}
+	return n
 }
 
-func (s *Stream) waitRead() error {
+func (s *Stream) waitRead() (byte, error) {
 	var timer *time.Timer
 	var deadline <-chan time.Time
 	if d, ok := s.rDeadline.Load().(time.Time); ok && !d.IsZero() {
@@ -131,18 +124,20 @@ func (s *Stream) waitRead() error {
 
 	select {
 	case <-s.chRead:
-		return nil
+		return PSH, nil
+	case <-s.chAck:
+		return ACK, nil
 	case <-s.chFin:
 		s.bufferMux.Lock()
 		defer s.bufferMux.Unlock()
 		if len(s.buffers) > 0 {
-			return nil
+			return FIN, nil
 		}
-		return io.EOF
+		return NOP, io.EOF
 	case <-deadline:
-		return ErrTimeout
+		return NOP, ErrTimeout
 	case <-s.chDie:
-		return io.ErrClosedPipe
+		return NOP, io.ErrClosedPipe
 	}
 }
 
@@ -158,6 +153,13 @@ func (s *Stream) pushBytes(buf []byte) (written int, err error) {
 func (s *Stream) notifyReadEvent() {
 	select {
 	case s.chRead <- struct{}{}:
+	default:
+	}
+}
+
+func (s *Stream) notifyACKEvent() {
+	select {
+	case s.chAck <- struct{}{}:
 	default:
 	}
 }
@@ -196,7 +198,12 @@ func (s *Stream) Write(b []byte) (n int, err error) {
 			return sent, err
 		}
 	}
-
+	n, err = s.session.writeFrame(NewFrame(ACK, s.sid), time.After(OpenCloseTimeout))
+	sent += n
+	// Finish write with ACK
+	if err != nil {
+		return sent, err
+	}
 	return sent, nil
 }
 

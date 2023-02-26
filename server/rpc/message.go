@@ -6,6 +6,7 @@ type Person struct {
 }
 
 type Message struct {
+	Sent int32
 	RPC  string
 	Body []byte
 }

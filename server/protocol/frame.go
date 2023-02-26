@@ -6,6 +6,7 @@ import "encoding/binary"
 const (
 	SYN byte = iota // stream open
 	PSH             // data push
+	ACK             // data acknowledge end of f
 	NOP             // no operation
 	FIN             // stream close, EOF
 )
