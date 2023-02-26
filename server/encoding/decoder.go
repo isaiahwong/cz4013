@@ -57,6 +57,14 @@ func (d *Decoder) readString() (string, error) {
 	return string(strBytes), nil
 }
 
+// writeInt32 writes a 8 bit integer
+func (d *Decoder) readUint8() (n uint8, err error) {
+	if err = binary.Read(d.reader, binary.LittleEndian, &n); err != nil {
+		return 0, err
+	}
+	return
+}
+
 // readInt32 deserializes data to int32.
 func (d *Decoder) readUint32() (n uint32, err error) {
 	if err = binary.Read(d.reader, binary.LittleEndian, &n); err != nil {

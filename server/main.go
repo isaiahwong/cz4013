@@ -1,33 +1,29 @@
 package main
 
 import (
-	"fmt"
-
-	"github.com/isaiahwong/cz4013/encoding"
+	"github.com/isaiahwong/cz4013/protocol"
 )
 
-type Person struct {
-	Name    string
-	Friends []*Person
-}
-
 func main() {
-	p := Person{
-		Name:    "John",
-		Friends: []*Person{{Name: "Bob"}, {Name: "Alice"}},
-	}
-	b, err := encoding.Marshal(p)
-	if err != nil {
-		panic(err)
-	}
-	var s Person
-	err = encoding.Unmarshal(b, &s)
-	if err != nil {
-		panic(err)
-	}
-	fmt.Println(s)
+	// p := Person{
+	// 	Name:    "John",
+	// 	Friends: []*Person{{Name: "Bob"}, {Name: "Alice"}},
+	// }
+	// b, err := encoding.Marshal(p)
+	// if err != nil {
+	// 	panic(err)
+	// }
 
-	// s, err := protocol.New(
+	// var s Person
+	// err = encoding.Unmarshal(b, &s)
+	// if err != nil {
+	// 	panic(err)
+	// }
+
+	s := protocol.New()
+	s.Serve()
+
+	// s, err := protocol.New(``
 	// 	protocol.WithPort(":12345"),
 	// )
 	// if err != nil {

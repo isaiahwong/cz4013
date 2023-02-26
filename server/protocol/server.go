@@ -1,97 +1,102 @@
 package protocol
 
 import (
-	"bytes"
-	"fmt"
-	"log"
 	"net"
 
 	"github.com/isaiahwong/cz4013/common"
+	"github.com/isaiahwong/cz4013/encoding"
+	"github.com/isaiahwong/cz4013/rpc"
 	"github.com/sirupsen/logrus"
 )
 
+type Semantics byte
+
+const (
+	Unknown Semantics = iota
+	AtMostOnce
+	AtLeastOnce
+)
+
 type Server struct {
-	conn   *net.UDPConn
-	addr   *net.UDPAddr
 	logger *logrus.Logger
+	opts   options
+	rpc    *rpc.RPC
 }
 
-// Serve starts the server.
-// Blocking connection
-func (s *Server) Serve() {
-	defer s.conn.Close()
+// Serve starts the server with blocking call
+func (s *Server) Serve() (err error) {
+	// Resolve UDP address
+	addr, err := net.ResolveUDPAddr("udp", s.opts.port)
+	if err != nil {
+		s.logger.WithError(err).Fatal("Unable to resolve UDP address")
+		return
+	}
+
+	// Creates non blocking UDP Connection
+	conn, err := net.ListenUDP("udp", addr)
+	if err != nil {
+		s.logger.WithError(err).Fatal("Unable to listen on UDP")
+		return err
+	}
+	// Create new session
+	sess := NewSession(conn)
+
+	// Blocking
+	s.handleSession(sess)
+	return nil
+}
+
+func (s *Server) handleSession(sess *Session) {
+	// Start session receive and send loop goroutines
+	sess.Start()
+	defer sess.Close()
 	for {
-
-		buf, addr, err := receiveChunks(s.conn)
+		stream, err := sess.Accept()
 		if err != nil {
-			log.Println("Error reading from connection:", err)
-			continue
-		}
-		log.Printf("Received %d bytes from %s: %s", len(buf), addr, string(buf))
-
-		// Process the request data
-		response := []byte("Hello, client!")
-
-		// Send the response back to the client
-		_, err = s.conn.WriteToUDP(response, addr)
-		if err != nil {
-			fmt.Println("Error sending response:", err)
+			s.logger.WithError(err).Error("Unable to accept stream, closing server")
 			return
 		}
+		go s.handleRequest(stream)
 	}
 }
 
-func receiveChunks(conn *net.UDPConn) ([]byte, *net.UDPAddr, error) {
-	var buf bytes.Buffer
-	var addr *net.UDPAddr
-	var err error
-	var n int
-	chunk := make([]byte, 1024)
+func (s *Server) handleRequest(stream *Stream) {
+	defer stream.Close()
 
-	for {
-		n, addr, err = conn.ReadFromUDP(chunk)
-		if err != nil {
-			return nil, addr, err
-		}
-
-		buf.Write(chunk[:n])
-
-		if n < len(chunk) {
-			break
-		}
+	buf := make([]byte, 1024)
+	// Process requests
+	stream.Read(buf)
+	// Unmarhsal message
+	m := new(rpc.Message)
+	err := encoding.Unmarshal(buf, m)
+	if err != nil {
+		s.logger.WithError(err).Error("Unable to unmarshal message")
+		return
 	}
 
-	return buf.Bytes(), addr, nil
+	_ = s.rpc.HandleRequest(m)
+
+	// Write return message
+	stream.Write(buf)
+
 }
 
-func New(opt ...Option) (*Server, error) {
+func New(opt ...Option) *Server {
+	s := new(Server)
 	// Default options
 	opts := options{
-		port:   ":5000",
-		logger: common.NewLogger(),
+		port:     ":8080",
+		logger:   common.NewLogger(),
+		semantic: AtLeastOnce,
 	}
 	// Apply options
 	for _, o := range opt {
 		o(&opts)
 	}
 
-	// Resolve UDP address
-	addr, err := net.ResolveUDPAddr("udp", opts.port)
-	if err != nil {
-		opts.logger.WithError(err).Fatal("Unable to resolve UDP address")
-		return nil, err
-	}
+	s.opts = opts
+	s.logger = opts.logger
+	s.rpc = rpc.New()
 
-	// Creates non blocking UDP Connection
-	conn, err := net.ListenUDP("udp", addr)
-	if err != nil {
-		opts.logger.WithError(err).Fatal("Unable to listen on UDP")
-		return nil, err
-	}
-
-	return &Server{
-		conn:   conn,
-		logger: opts.logger,
-		addr:   addr,
-	}, nil
+	return s
 }

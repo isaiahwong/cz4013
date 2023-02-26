@@ -1,10 +1,13 @@
 package protocol
 
-import "github.com/sirupsen/logrus"
+import (
+	"github.com/sirupsen/logrus"
+)
 
 type options struct {
-	logger *logrus.Logger
-	port   string
+	logger   *logrus.Logger
+	port     string
+	semantic Semantics
 }
 
 // Option sets options for Server.
@@ -14,6 +17,12 @@ type Option func(*options)
 func WithPort(port string) Option {
 	return func(o *options) {
 		o.port = port
+	}
+}
+
+func WithSemantic(semantic Semantics) Option {
+	return func(o *options) {
+		o.semantic = semantic
 	}
 }
 

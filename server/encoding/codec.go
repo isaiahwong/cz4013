@@ -17,6 +17,7 @@ func GetCodec(v interface{}) (Codec, error) {
 }
 
 func getCodec(t reflect.Value) (Codec, error) {
+
 	switch t.Kind() {
 	case reflect.String:
 		return new(stringCodec), nil
@@ -26,6 +27,8 @@ func getCodec(t reflect.Value) (Codec, error) {
 		return new(int32Codec), nil
 	case reflect.Int64:
 		return new(int64Codec), nil
+	case reflect.Uint8:
+		return new(uint8Codec), nil
 	case reflect.Uint32:
 		return new(uint32Codec), nil
 	case reflect.Uint64:
@@ -106,6 +109,22 @@ func (c *int64Codec) Encode(e *Encoder, rv reflect.Value) error {
 func (c *int64Codec) Decode(d *Decoder, rv reflect.Value) (err error) {
 	if b, err := d.readInt64(); err == nil {
 		rv.SetInt(b)
+	}
+	return
+}
+
+// Used for bytes. i.e 1 byte = 8 bits
+type uint8Codec struct{}
+
+// Encode encodes a value into the encoder.
+func (c *uint8Codec) Encode(e *Encoder, rv reflect.Value) error {
+	return e.writeUInt8(uint8(rv.Uint()))
+}
+
+// Decode decodes into a reflect value from the decoder.
+func (c *uint8Codec) Decode(d *Decoder, rv reflect.Value) (err error) {
+	if b, err := d.readUint8(); err == nil {
+		rv.SetUint(uint64(b))
 	}
 	return
 }
@@ -292,7 +311,6 @@ func (s *structCodec) genCodec(t reflect.Value) error {
 // Encode encodes a value into the encoder.
 func (s *structCodec) Encode(e *Encoder, rv reflect.Value) (err error) {
 	for _, i := range s.fields {
-
 		if err = i.codec.Encode(e, rv.Field(i.index)); err != nil {
 			return err
 		}
@@ -304,6 +322,7 @@ func (s *structCodec) Encode(e *Encoder, rv reflect.Value) (err error) {
 func (s *structCodec) Decode(d *Decoder, rv reflect.Value) (err error) {
 	for _, i := range s.fields {
 		v := rv.Field(i.index)
+
 		switch {
 		case v.Kind() == reflect.Ptr:
 			err = i.codec.Decode(d, v)

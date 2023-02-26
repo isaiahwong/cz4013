@@ -87,6 +87,15 @@ func (e *Encoder) writeInt64(n int64) error {
 	return nil
 }
 
+// writeInt32 writes a 8 bit integer
+func (e *Encoder) writeUInt8(n uint8) error {
+	err := binary.Write(e.out, binary.LittleEndian, n)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
 // writeUint32 writes a 32 bit integer
 func (e *Encoder) writeUint32(n uint32) error {
 	err := binary.Write(e.out, binary.LittleEndian, n)
@@ -123,4 +132,8 @@ func (e *Encoder) writeFloat64(f float64) error {
 	buf := make([]byte, 4)
 	binary.LittleEndian.PutUint64(buf, bits)
 	return binary.Write(e.out, binary.LittleEndian, buf)
+}
+
+func (e *Encoder) writeBytes(b []byte) error {
+	return binary.Write(e.out, binary.LittleEndian, b)
 }
