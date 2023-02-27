@@ -3,6 +3,7 @@ package protocol
 import (
 	"fmt"
 	"net"
+	"time"
 
 	"github.com/isaiahwong/cz4013/common"
 	"github.com/isaiahwong/cz4013/rpc"
@@ -63,6 +64,7 @@ func (s *Server) handleSession(sess *Session) {
 
 func (s *Server) handleRequest(stream *Stream) {
 	defer stream.Close()
+	stream.SetReadDeadline(time.Now().Add(1 * time.Second))
 
 	buf := make([]byte, 65507)
 	// Process requests
@@ -71,7 +73,7 @@ func (s *Server) handleRequest(stream *Stream) {
 		s.logger.WithError(err).Error("Unable to read from stream")
 		return
 	}
-	fmt.Println(buf[:n])
+	fmt.Println(string(buf[:n]))
 	// // Unmarhsal message
 	// m := new(rpc.Message)
 	// err = encoding.Unmarshal(buf[:n], m)

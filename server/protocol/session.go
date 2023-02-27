@@ -2,6 +2,7 @@ package protocol
 
 import (
 	"encoding/binary"
+	"fmt"
 	"io"
 	"net"
 	"sync"
@@ -153,6 +154,7 @@ func (s *Session) recvLoop() {
 		}
 
 		sid := hdr.StreamID()
+		fmt.Println(hdr.Flag())
 		switch hdr.Flag() {
 		case SYN:
 			s.streamMux.Lock()
