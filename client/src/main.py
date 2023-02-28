@@ -6,6 +6,7 @@ def main():
     s = Client()
     stream: Stream = s.open()
     stream.write(bytearray("hello, world!", "utf-8"))
+    res = stream.read()
 
 
 if __name__ == "__main__":

@@ -40,7 +40,7 @@ func (s *Server) Serve() (err error) {
 		return err
 	}
 	// Create new session
-	sess := NewSession(conn)
+	sess := NewSession(conn, false)
 
 	// Blocking
 	s.handleSession(sess)
@@ -57,36 +57,35 @@ func (s *Server) handleSession(sess *Session) {
 			s.logger.WithError(err).Error("Unable to accept stream, closing server")
 			return
 		}
-		fmt.Println("Accepted stream")
+		s.logger.Info(fmt.Sprintf("Accepted stream from %s", stream.addr))
 		go s.handleRequest(stream)
 	}
 }
 
 func (s *Server) handleRequest(stream *Stream) {
 	defer stream.Close()
-	stream.SetReadDeadline(time.Now().Add(1 * time.Second))
 
-	buf := make([]byte, 65507)
-	// Process requests
-	n, err := stream.Read(buf)
+	writable := func(data []byte) (int, error) {
+		return stream.Write(data)
+	}
+
+	readable := func(deadline time.Duration) ([]byte, error) {
+		stream.SetReadDeadline(time.Now().Add(deadline))
+		// MTU TODO: parametrise
+		buf := make([]byte, 65507)
+		// Process requests
+		n, err := stream.Read(buf)
+		if err != nil {
+			return nil, err
+		}
+		return buf[:n], nil
+	}
+
+	err := s.rpc.HandleRequest(readable, writable)
 	if err != nil {
-		s.logger.WithError(err).Error("Unable to read from stream")
+		s.logger.WithError(err).Error("Error handling request")
 		return
 	}
-	fmt.Println(string(buf[:n]))
-	// // Unmarhsal message
-	// m := new(rpc.Message)
-	// err = encoding.Unmarshal(buf[:n], m)
-	// if err != nil {
-	// 	s.logger.WithError(err).Error("Unable to unmarshal message")
-	// 	return
-	// }
-
-	// _ = s.rpc.HandleRequest(m)
-
-	// Write return message
-	// stream.Write(buf)
-
 }
 
 func New(opt ...Option) *Server {
@@ -104,7 +103,7 @@ func New(opt ...Option) *Server {
 
 	s.opts = opts
 	s.logger = opts.logger
-	s.rpc = rpc.New()
+	s.rpc = rpc.New(opts.deadline)
 
 	return s
 }

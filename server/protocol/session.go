@@ -1,8 +1,7 @@
 package protocol
 
 import (
-	"encoding/binary"
-	"fmt"
+	"errors"
 	"io"
 	"net"
 	"sync"
@@ -15,23 +14,42 @@ import (
 const OpenCloseTimeout = 30 * time.Second // stream open/close timeout
 
 type Session struct {
+	client bool
+
 	conn     *net.UDPConn
 	capacity int
 
-	nextStreamID    uint32 // next stream identifier
+	// next stream identifier used for clients
+	nextStreamID    uint32
 	nextStreamIDMux sync.Mutex
 
 	chStreamAccept chan *Stream
-	die            chan struct{} // Session has been closed
-	logger         *logrus.Logger
+	// if session has been closed
+	chDie  chan struct{}
+	logger *logrus.Logger
 
-	streamMux sync.Mutex         // locks streams
-	streams   map[uint32]*Stream // mapping of sid to streams.
-	writes    chan writeRequest
+	// mutex streams
+	streamMux sync.Mutex
+	// mapping of sid to streams.
+	streams  map[uint32]*Stream
+	chWrites chan writeRequest
 
 	maxFrameSize int
 
 	requestID uint32 // write request monotonic increasing
+
+	// Socket errors
+	chSocketReadError    chan struct{}
+	chSocketWriteError   chan struct{}
+	socketReadError      atomic.Value
+	socketWriteError     atomic.Value
+	socketReadErrorOnce  sync.Once
+	socketWriteErrorOnce sync.Once
+
+	// protocol errors
+	protoError     atomic.Value
+	chProtoError   chan struct{}
+	protoErrorOnce sync.Once
 }
 
 type writeRequest struct {
@@ -45,16 +63,21 @@ type writeResult struct {
 	err error
 }
 
-func NewSession(conn *net.UDPConn) *Session {
+func NewSession(conn *net.UDPConn, client bool) *Session {
 	s := new(Session)
 	s.conn = conn
+	s.client = client
 	s.capacity = 1024
 	s.logger = logrus.New()
 	s.maxFrameSize = 1024
-	s.die = make(chan struct{})
-	s.writes = make(chan writeRequest)
 	s.streams = make(map[uint32]*Stream)
+
+	s.chDie = make(chan struct{})
+	s.chWrites = make(chan writeRequest)
 	s.chStreamAccept = make(chan *Stream, 1024)
+	s.chSocketReadError = make(chan struct{})
+	s.chSocketWriteError = make(chan struct{})
+	s.chProtoError = make(chan struct{})
 
 	return s
 }
@@ -66,7 +89,7 @@ func (s *Session) Start() {
 
 func (s *Session) Close() error {
 	var once bool
-	close(s.die)
+	close(s.chDie)
 
 	if once {
 		s.streamMux.Lock()
@@ -85,8 +108,12 @@ func (s *Session) Accept() (*Stream, error) {
 	select {
 	case stream := <-s.chStreamAccept:
 		return stream, nil
-	case <-s.die:
+	case <-s.chDie:
 		return nil, io.ErrClosedPipe
+	case <-s.chSocketReadError:
+		return nil, s.socketReadError.Load().(error)
+	case <-s.chProtoError:
+		return nil, s.protoError.Load().(error)
 	}
 }
 
@@ -97,18 +124,9 @@ func (s *Session) Open(addr *net.UDPAddr) (*Stream, error) {
 
 	// generate stream id
 	s.nextStreamIDMux.Lock()
-	// if s.goAway > 0 {
-	// 	s.nextStreamIDLock.Unlock()
-	// 	return nil, ErrGoAway
-	// }
 
 	s.nextStreamID += 2
 	sid := s.nextStreamID
-	// if sid == sid%2 { // stream-id overflows
-	// 	s.goAway = 1
-	// 	s.nextStreamIDLock.Unlock()
-	// 	return nil, ErrGoAway
-	// }
 	s.nextStreamIDMux.Unlock()
 
 	stream := NewStream(s, sid, s.maxFrameSize, addr)
@@ -120,8 +138,12 @@ func (s *Session) Open(addr *net.UDPAddr) (*Stream, error) {
 	s.streamMux.Lock()
 	defer s.streamMux.Unlock()
 	select {
-	case <-s.die:
+	case <-s.chDie:
 		return nil, io.ErrClosedPipe
+	case <-s.chSocketReadError:
+		return nil, s.socketReadError.Load().(error)
+	case <-s.chProtoError:
+		return nil, s.protoError.Load().(error)
 	default:
 		s.streams[sid] = stream
 		return stream, nil
@@ -130,7 +152,7 @@ func (s *Session) Open(addr *net.UDPAddr) (*Stream, error) {
 
 func (s *Session) IsClosed() bool {
 	select {
-	case <-s.die:
+	case <-s.chDie:
 		return true
 	default:
 		return false
@@ -149,12 +171,11 @@ func (s *Session) recvLoop() {
 		copy(hdr[:], b[:headerSize])
 
 		if err != nil {
-			s.logger.WithError(err).Log(logrus.ErrorLevel, "recvLoop: Unable to read from UDP connection. Closing")
+			s.notifyReadError(err)
 			return
 		}
 
 		sid := hdr.StreamID()
-		fmt.Println(hdr.Flag())
 		switch hdr.Flag() {
 		case SYN:
 			s.streamMux.Lock()
@@ -163,8 +184,8 @@ func (s *Session) recvLoop() {
 				stream := NewStream(s, sid, s.maxFrameSize, addr)
 				s.streams[sid] = stream
 				select {
+				case <-s.chDie:
 				case s.chStreamAccept <- stream:
-				case <-s.die:
 				}
 			}
 			s.streamMux.Unlock()
@@ -181,22 +202,6 @@ func (s *Session) recvLoop() {
 				stream.notifyReadEvent()
 			}
 			s.streamMux.Unlock()
-			// if _, err := io.ReadFull(s.conn, newbuf); err == nil {
-
-			// 	fmt.Println("here")
-			// 	s.streamMux.Lock()
-			// 	if stream, ok := s.streams[sid]; ok {
-
-			// 		stream.pushBytes(newbuf)
-			// 		// atomic.AddInt32(&s.bucket, -int32(written))
-			// 		stream.notifyReadEvent()
-			// 	}
-			// 	s.streamMux.Unlock()
-			// } else {
-			// 	fmt.Println(err)
-			// 	// s.notifyReadError(err)
-			// 	return
-			// }
 
 		case ACK:
 			s.streamMux.Lock()
@@ -208,11 +213,14 @@ func (s *Session) recvLoop() {
 			s.streamMux.Lock()
 			if stream, ok := s.streams[sid]; ok {
 				stream.fin()
+				// remove blocks to on going read
 				stream.notifyReadEvent()
 			}
 			s.streamMux.Unlock()
 		case NOP:
-
+		default:
+			s.notifyProtoError(ErrInvalidProtocol)
+			return
 		}
 	}
 }
@@ -224,10 +232,32 @@ func (s *Session) streamClosed(sid uint32) {
 	s.streamMux.Unlock()
 }
 
+func (s *Session) notifyReadError(err error) {
+	s.socketReadErrorOnce.Do(func() {
+		s.socketReadError.Store(err)
+		close(s.chSocketReadError)
+	})
+}
+
+func (s *Session) notifyWriteError(err error) {
+	s.socketWriteErrorOnce.Do(func() {
+		s.socketWriteError.Store(err)
+		close(s.chSocketWriteError)
+	})
+}
+
+func (s *Session) notifyProtoError(err error) {
+	s.protoErrorOnce.Do(func() {
+		s.protoError.Store(err)
+		close(s.chProtoError)
+	})
+}
+
 func (s *Session) sendLoop() {
 	var buf []byte
 	var n int
 	var err error
+	var conn *net.UDPConn
 
 	// 2^16 + 7 buffer size
 	buf = make([]byte, (1<<16)+headerSize)
@@ -235,16 +265,30 @@ func (s *Session) sendLoop() {
 	for {
 
 		select {
-		case <-s.die:
+		case <-s.chDie:
 			return
-		case request := <-s.writes:
-			buf[0] = request.frame.Flag
-			binary.LittleEndian.PutUint16(buf[1:], uint16(len(request.frame.Data)))
-			binary.LittleEndian.PutUint32(buf[3:], request.frame.Sid)
-
+		case request := <-s.chWrites:
+			header := request.frame.Header()
+			copy(buf[:headerSize], header[:])
 			copy(buf[headerSize:], request.frame.Data)
 
-			n, err = s.conn.Write(buf[:headerSize+len(request.frame.Data)])
+			if s.client {
+				conn = s.conn
+			} else {
+				// Retrieve the stream
+				stream, ok := s.streams[request.frame.Sid]
+				if ok {
+					conn, err = net.DialUDP("udp", nil, stream.addr)
+					defer conn.Close()
+				} else {
+					// Stream does not exist
+					n, err = 0, errors.New("Stream not found. Might have been closed")
+				}
+			}
+
+			if err == nil {
+				n, err = conn.Write(buf[:headerSize+len(request.frame.Data)])
+			}
 
 			n -= headerSize
 			if n < 0 {
@@ -259,11 +303,11 @@ func (s *Session) sendLoop() {
 			request.result <- result
 			close(request.result)
 
-			// store conn error
-			// if err != nil {
-			// 	s.notifyWriteError(err)
-			// 	return
-			// }
+			// notify connection write error
+			if err != nil {
+				s.notifyWriteError(err)
+				return
+			}
 		}
 	}
 }
@@ -276,17 +320,22 @@ func (s *Session) writeFrame(f Frame, deadline <-chan time.Time) (n int, err err
 	}
 
 	select {
-	case s.writes <- req:
-	case <-s.die:
+	case s.chWrites <- req:
+	case <-s.chDie:
 		return 0, io.ErrClosedPipe
+	case <-s.chSocketWriteError:
+		return 0, s.socketWriteError.Load().(error)
 	case <-deadline:
 		return 0, ErrTimeout
 	}
+
 	select {
 	case result := <-req.result:
 		return result.n, result.err
-	case <-s.die:
+	case <-s.chDie:
 		return 0, io.ErrClosedPipe
+	case <-s.chSocketWriteError:
+		return 0, s.socketWriteError.Load().(error)
 	case <-deadline:
 		return 0, ErrTimeout
 	}

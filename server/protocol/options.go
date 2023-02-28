@@ -1,6 +1,8 @@
 package protocol
 
 import (
+	"time"
+
 	"github.com/sirupsen/logrus"
 )
 
@@ -8,6 +10,7 @@ type options struct {
 	logger   *logrus.Logger
 	port     string
 	semantic Semantics
+	deadline time.Duration
 }
 
 // Option sets options for Server.
@@ -23,6 +26,12 @@ func WithPort(port string) Option {
 func WithSemantic(semantic Semantics) Option {
 	return func(o *options) {
 		o.semantic = semantic
+	}
+}
+
+func WithDeadline(deadline time.Duration) Option {
+	return func(o *options) {
+		o.deadline = deadline
 	}
 }
 

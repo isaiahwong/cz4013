@@ -84,7 +84,6 @@ func (s *Stream) Read(b []byte) (int, error) {
 	for {
 		n += s.read(b)
 		flag, err := s.waitRead()
-
 		if err != nil {
 			return n, err
 		}
@@ -130,14 +129,18 @@ func (s *Stream) waitRead() (byte, error) {
 	case <-s.chFin:
 		s.bufferMux.Lock()
 		defer s.bufferMux.Unlock()
-		if len(s.buffers) > 0 {
-			return FIN, nil
-		}
+		// if len(s.buffers) > 0 {
+		// 	return FIN, nil
+		// }
 		return NOP, io.EOF
 	case <-deadline:
 		return NOP, ErrTimeout
 	case <-s.chDie:
 		return NOP, io.ErrClosedPipe
+	case <-s.session.chSocketReadError:
+		return NOP, s.session.socketReadError.Load().(error)
+	case <-s.session.chProtoError:
+		return NOP, s.session.protoError.Load().(error)
 	}
 }
 

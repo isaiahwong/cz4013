@@ -18,6 +18,14 @@ type Frame struct {
 	Data []byte
 }
 
+func (f Frame) Header() header {
+	h := header{}
+	h[0] = f.Flag
+	binary.LittleEndian.PutUint16(h[1:], uint16(len(f.Data)))
+	binary.LittleEndian.PutUint32(h[3:], f.Sid)
+	return h
+}
+
 func NewFrame(flag byte, sid uint32) Frame {
 	return Frame{Flag: flag, Sid: sid}
 }

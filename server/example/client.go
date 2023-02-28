@@ -51,7 +51,7 @@ func main() {
 		panic(err)
 	}
 
-	session := protocol.NewSession(conn)
+	session := protocol.NewSession(conn, true)
 	for {
 		session.Start()
 		// Open a new stream
@@ -90,7 +90,7 @@ func main() {
 		sent++
 		stream.Write(b)
 		fmt.Println("Sent", sent)
-		time.Sleep(100 * time.Millisecond)
+		time.Sleep(500 * time.Millisecond)
 		stream.Close()
 		// session.Close()
 	}

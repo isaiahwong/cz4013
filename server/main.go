@@ -1,6 +1,8 @@
 package main
 
 import (
+	"time"
+
 	"github.com/isaiahwong/cz4013/protocol"
 )
 
@@ -20,7 +22,7 @@ func main() {
 	// 	panic(err)
 	// }
 
-	s := protocol.New()
+	s := protocol.New(protocol.WithDeadline(5 * time.Second))
 	s.Serve()
 
 	// s, err := protocol.New(``
