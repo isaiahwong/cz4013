@@ -1,11 +1,16 @@
 package rpc
 
 import (
-	"fmt"
+	"errors"
 	"time"
 
 	"github.com/isaiahwong/cz4013/encoding"
 	"github.com/sirupsen/logrus"
+)
+
+var (
+	ErrNotFound = errors.New("RPC method not found")
+	ErrMarshal  = errors.New("Unable to unmarshal message")
 )
 
 type RPC struct {
@@ -29,16 +34,29 @@ func (r *RPC) HandleRequest(read Readable, write Writable) error {
 	m := new(Message)
 	err = encoding.Unmarshal(buf, m)
 	if err != nil {
-		return fmt.Errorf("unable to unmarshal message: %w", err)
+		return r.errorMessage(ErrMarshal, "", read, write)
 	}
-	fmt.Println(m)
 
-	// _ = s.rpc.HandleRequest(m)
-	return nil
+	return r.router(m, read, write)
 }
 
-func (r *RPC) router() {
+func (r *RPC) router(m *Message, read Readable, write Writable) error {
+	if m.RPC == "FindFlights" {
+		return r.FindFlights(m, read, write)
+	}
 
+	return r.errorMessage(ErrNotFound, "RPC method not found", read, write)
+}
+
+func (r *RPC) errorMessage(err error, body string, read Readable, write Writable) error {
+	b, err := encoding.Marshal(NewError(err, body))
+	if err != nil {
+		return err
+	}
+	if _, err := write(b); err != nil {
+		return err
+	}
+	return nil
 }
 
 func New(deadline time.Duration) *RPC {

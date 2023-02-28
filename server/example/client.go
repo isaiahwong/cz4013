@@ -10,33 +10,6 @@ import (
 	"github.com/isaiahwong/cz4013/rpc"
 )
 
-const chunkSize = 1024
-
-var sent = 0
-
-func splitMessage(msg []byte) [][]byte {
-	var chunks [][]byte
-
-	// Calculate the number of chunks needed to split the message
-	numChunks := len(msg) / chunkSize
-	if len(msg)%chunkSize != 0 {
-		numChunks++
-	}
-
-	// Split the message into chunks
-	for i := 0; i < numChunks; i++ {
-		start := i * chunkSize
-		end := start + chunkSize
-		if end > len(msg) {
-			end = len(msg)
-		}
-		chunk := msg[start:end]
-		chunks = append(chunks, chunk)
-	}
-
-	return chunks
-}
-
 func main() {
 
 	// Create a UDP address for the server
@@ -51,6 +24,8 @@ func main() {
 		panic(err)
 	}
 
+	fmt.Println(conn.LocalAddr())
+
 	session := protocol.NewSession(conn, true)
 	for {
 		session.Start()
@@ -59,19 +34,6 @@ func main() {
 		if err != nil {
 			panic(err)
 		}
-
-		// stream.Close()
-		// time.Sleep(1 * time.Hour)
-
-		// p := rpc.Person{
-		// 	Name:    "John",
-		// 	Friends: []*rpc.Person{{Name: "Bob"}, {Name: "Alice"}},
-		// }
-
-		// pb, err := encoding.Marshal(p)
-		// if err != nil {
-		// 	panic(err)
-		// }
 
 		v := rpc.Message{
 			RPC:   "Create",
@@ -82,19 +44,24 @@ func main() {
 			panic(err)
 		}
 
-		var m rpc.Message
-		_ = encoding.Unmarshal(b, &m)
+		stream.Write(b)
+
+		res := make([]byte, 1024)
+		// stream.SetReadDeadline(time.Now().Add(5 * time.Second))
+		n, err := stream.Read(res)
 		if err != nil {
 			panic(err)
 		}
-		fmt.Println(b)
 
-		fmt.Println(len(b))
-		sent++
-		stream.Write(b)
-		fmt.Println("Sent", sent)
-		time.Sleep(500 * time.Millisecond)
+		var m rpc.Message
+		_ = encoding.Unmarshal(res[:n], &m)
+		fmt.Println(m.Error.Body)
+		if err != nil {
+			panic(err)
+		}
+
 		stream.Close()
+		time.Sleep(time.Second * 1)
 		// session.Close()
 	}
 

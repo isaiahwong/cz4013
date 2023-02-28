@@ -84,7 +84,7 @@ func (s *Stream) Read(b []byte) (int, error) {
 	for {
 		n += s.read(b)
 		flag, err := s.waitRead()
-		if err != nil {
+		if err != nil && err != io.EOF {
 			return n, err
 		}
 		if flag == ACK {
@@ -129,9 +129,9 @@ func (s *Stream) waitRead() (byte, error) {
 	case <-s.chFin:
 		s.bufferMux.Lock()
 		defer s.bufferMux.Unlock()
-		// if len(s.buffers) > 0 {
-		// 	return FIN, nil
-		// }
+		if len(s.buffers) > 0 {
+			return FIN, nil
+		}
 		return NOP, io.EOF
 	case <-deadline:
 		return NOP, ErrTimeout
@@ -207,6 +207,7 @@ func (s *Stream) Write(b []byte) (n int, err error) {
 	if err != nil {
 		return sent, err
 	}
+
 	return sent, nil
 }
 

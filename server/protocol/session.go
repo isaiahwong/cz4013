@@ -168,7 +168,7 @@ func (s *Session) recvLoop() {
 		b := make([]byte, 1024)
 		// Read header
 		_, addr, err = s.conn.ReadFromUDP(b)
-		copy(hdr[:], b[:headerSize])
+		copy(hdr[:], b[:HeaderSize])
 
 		if err != nil {
 			s.notifyReadError(err)
@@ -194,7 +194,7 @@ func (s *Session) recvLoop() {
 				continue
 			}
 			newbuf := make([]byte, int(hdr.Length()))
-			copy(newbuf, b[headerSize:headerSize+int(hdr.Length())])
+			copy(newbuf, b[HeaderSize:HeaderSize+int(hdr.Length())])
 			s.streamMux.Lock()
 			if stream, ok := s.streams[sid]; ok {
 				stream.pushBytes(newbuf)
@@ -257,40 +257,33 @@ func (s *Session) sendLoop() {
 	var buf []byte
 	var n int
 	var err error
-	var conn *net.UDPConn
 
 	// 2^16 + 7 buffer size
-	buf = make([]byte, (1<<16)+headerSize)
+	buf = make([]byte, (1<<16)+HeaderSize)
 
 	for {
-
 		select {
 		case <-s.chDie:
 			return
 		case request := <-s.chWrites:
 			header := request.frame.Header()
-			copy(buf[:headerSize], header[:])
-			copy(buf[headerSize:], request.frame.Data)
+			copy(buf[:HeaderSize], header[:])
+			copy(buf[HeaderSize:], request.frame.Data)
 
 			if s.client {
-				conn = s.conn
+				s.conn.Write(buf[:HeaderSize+len(request.frame.Data)])
 			} else {
 				// Retrieve the stream
 				stream, ok := s.streams[request.frame.Sid]
 				if ok {
-					conn, err = net.DialUDP("udp", nil, stream.addr)
-					defer conn.Close()
+					s.conn.WriteToUDP(buf[:HeaderSize+len(request.frame.Data)], stream.addr)
 				} else {
 					// Stream does not exist
 					n, err = 0, errors.New("Stream not found. Might have been closed")
 				}
 			}
 
-			if err == nil {
-				n, err = conn.Write(buf[:headerSize+len(request.frame.Data)])
-			}
-
-			n -= headerSize
+			n -= HeaderSize
 			if n < 0 {
 				n = 0
 			}

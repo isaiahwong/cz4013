@@ -34,10 +34,10 @@ const (
 	sizeOfFlag   = 1
 	sizeOfLength = 2
 	sizeOfSid    = 4
-	headerSize   = sizeOfFlag + sizeOfSid + sizeOfLength
+	HeaderSize   = sizeOfFlag + sizeOfSid + sizeOfLength
 )
 
-type header [headerSize]byte
+type header [HeaderSize]byte
 
 func (h header) Flag() byte {
 	return h[0]

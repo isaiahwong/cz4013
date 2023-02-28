@@ -7,6 +7,7 @@ def main():
     stream: Stream = s.open()
     stream.write(bytearray("hello, world!", "utf-8"))
     res = stream.read()
+    print(res)
 
 
 if __name__ == "__main__":
