@@ -17,6 +17,7 @@ type RPC struct {
 type Writable func([]byte) (int, error)
 type Readable func(time.Duration) ([]byte, error)
 
+// HandleRequest handles the request from the client
 func (r *RPC) HandleRequest(read Readable, write Writable) error {
 	// Read message
 	buf, err := read(r.deadline)

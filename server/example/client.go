@@ -73,7 +73,10 @@ func main() {
 		// 	panic(err)
 		// }
 
-		v := rpc.Message{Sent: int32(sent), RPC: "Create", Body: []byte{}}
+		v := rpc.Message{
+			RPC:   "Create",
+			Query: map[string]string{"key": "value"},
+			Body:  []byte{}}
 		b, err := encoding.Marshal(v)
 		if err != nil {
 			panic(err)

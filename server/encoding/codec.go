@@ -41,6 +41,8 @@ func getCodec(t reflect.Value) (Codec, error) {
 		return newPtrCodec(t)
 	case reflect.Struct:
 		return newStructCodec(t)
+	case reflect.Map:
+		return newMapCodec(t)
 	case reflect.Slice:
 		switch t.Type().Elem().Kind() {
 		case reflect.Ptr:
@@ -266,6 +268,93 @@ func (p *ptrCodec) Decode(d *Decoder, rv reflect.Value) (err error) {
 }
 
 // ============================================================================
+// Map Codec
+// ============================================================================
+
+type mapCodec struct {
+	key Codec
+	val Codec
+}
+
+// Encode encodes a value into the encoder.
+func (m *mapCodec) Encode(e *Encoder, rv reflect.Value) (err error) {
+	e.writeUint64(uint64(rv.Len()))
+	for _, key := range rv.MapKeys() {
+		value := rv.MapIndex(key)
+
+		if err = m.key.Encode(e, key); err != nil {
+			return err
+		}
+		if err = m.val.Encode(e, value); err != nil {
+			return err
+		}
+	}
+	return
+}
+
+// Decode decodes into a reflect value from the decoder.
+func (m *mapCodec) Decode(d *Decoder, rv reflect.Value) (err error) {
+	var l uint64
+	var kc, vc Codec
+	l, err = d.readUint64()
+	if err != nil {
+		return
+	}
+
+	t := rv.Type()
+	rv.Set(reflect.MakeMap(t))
+	for i := 0; i < int(l); i++ {
+
+		kv := reflect.Indirect(reflect.New(rv.Type().Key()))
+		kc = m.key
+		if kc == nil {
+			if kc, err = getCodec(kv); err != nil {
+				return
+			}
+		}
+		if err = kc.Decode(d, kv); err != nil {
+			return
+		}
+		vv := reflect.Indirect(reflect.New(rv.Type().Elem()))
+		vc = m.val
+		if vc == nil {
+			if vc, err = getCodec(vv); err != nil {
+				return
+			}
+		}
+		if err = vc.Decode(d, vv); err != nil {
+			return
+		}
+
+		rv.SetMapIndex(kv, vv)
+	}
+	return nil
+}
+
+func newMapCodec(t reflect.Value) (Codec, error) {
+	if t.Len() == 0 {
+		return &mapCodec{}, nil
+	}
+
+	k := reflect.Indirect(reflect.New(t.Type().Key()))
+	key, err := getCodec(k)
+	if err != nil {
+		return nil, err
+	}
+
+	v := reflect.Indirect(reflect.New(t.Type().Elem()))
+	val, err := getCodec(v)
+	if err != nil {
+		return nil, err
+	}
+
+	return &mapCodec{
+		key: key,
+		val: val,
+	}, nil
+}
+
+// ============================================================================
 // Struct Codec
 // ============================================================================
 type (
@@ -343,13 +432,13 @@ type sliceCodec struct {
 	codec Codec
 }
 
+// newSliceCodec returns a new slice codec.
 func newSliceCodec(t reflect.Value) (Codec, error) {
-	// Do not provide codec for empty slice
 	if t.Len() == 0 {
 		return &sliceCodec{}, nil
 	}
-
-	codec, err := getCodec(t.Index(0))
+	v := reflect.New(t.Type())
+	codec, err := getCodec(v)
 	if err != nil {
 		return nil, err
 	}
