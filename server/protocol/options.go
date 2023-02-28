@@ -3,6 +3,7 @@ package protocol
 import (
 	"time"
 
+	"github.com/isaiahwong/cz4013/store"
 	"github.com/sirupsen/logrus"
 )
 
@@ -11,6 +12,7 @@ type options struct {
 	port     string
 	semantic Semantics
 	deadline time.Duration
+	db       *store.DB
 }
 
 // Option sets options for Server.
@@ -39,5 +41,11 @@ func WithDeadline(deadline time.Duration) Option {
 func WithLogger(l *logrus.Logger) Option {
 	return func(o *options) {
 		o.logger = l
+	}
+}
+
+func WithDB(db *store.DB) Option {
+	return func(o *options) {
+		o.db = db
 	}
 }

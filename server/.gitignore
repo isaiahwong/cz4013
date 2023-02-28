@@ -23,3 +23,4 @@ go.work
 # Custom
 ref 
 .vscode
+.DS_Store

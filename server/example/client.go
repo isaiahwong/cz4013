@@ -63,17 +63,17 @@ func main() {
 		// stream.Close()
 		// time.Sleep(1 * time.Hour)
 
-		p := rpc.Person{
-			Name:    "John",
-			Friends: []*rpc.Person{{Name: "Bob"}, {Name: "Alice"}},
-		}
+		// p := rpc.Person{
+		// 	Name:    "John",
+		// 	Friends: []*rpc.Person{{Name: "Bob"}, {Name: "Alice"}},
+		// }
 
-		pb, err := encoding.Marshal(p)
-		if err != nil {
-			panic(err)
-		}
+		// pb, err := encoding.Marshal(p)
+		// if err != nil {
+		// 	panic(err)
+		// }
 
-		v := rpc.Message{Sent: int32(sent), RPC: "Create", Body: pb}
+		v := rpc.Message{Sent: int32(sent), RPC: "Create", Body: []byte{}}
 		b, err := encoding.Marshal(v)
 		if err != nil {
 			panic(err)

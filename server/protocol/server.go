@@ -3,10 +3,12 @@ package protocol
 import (
 	"fmt"
 	"net"
+	"sync"
 	"time"
 
 	"github.com/isaiahwong/cz4013/common"
 	"github.com/isaiahwong/cz4013/rpc"
+	"github.com/isaiahwong/cz4013/store"
 	"github.com/sirupsen/logrus"
 )
 
@@ -22,6 +24,10 @@ type Server struct {
 	logger *logrus.Logger
 	opts   options
 	rpc    *rpc.RPC
+	addr   *net.UDPAddr
+
+	dbMux sync.Mutex
+	db    *store.DB
 }
 
 // Serve starts the server with blocking call
@@ -32,6 +38,7 @@ func (s *Server) Serve() (err error) {
 		s.logger.WithError(err).Fatal("Unable to resolve UDP address")
 		return
 	}
+	s.addr = addr
 
 	// Creates non blocking UDP Connection
 	conn, err := net.ListenUDP("udp", addr)
@@ -50,6 +57,7 @@ func (s *Server) Serve() (err error) {
 func (s *Server) handleSession(sess *Session) {
 	// Start session receive and send loop goroutines
 	sess.Start()
+	s.logger.Info(fmt.Sprintf("Started server on %v", s.addr))
 	defer sess.Close()
 	for {
 		stream, err := sess.Accept()
@@ -57,7 +65,7 @@ func (s *Server) handleSession(sess *Session) {
 			s.logger.WithError(err).Error("Unable to accept stream, closing server")
 			return
 		}
-		s.logger.Info(fmt.Sprintf("Accepted stream from %s", stream.addr))
+		s.logger.Info(fmt.Sprintf("Accepted stream from %v", stream.addr))
 		go s.handleRequest(stream)
 	}
 }
