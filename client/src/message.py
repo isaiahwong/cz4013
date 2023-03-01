@@ -1,4 +1,6 @@
 import struct, json, ast
+ #message format [len(rpc)   rpc   len(query)   query len(body)  body   len(error)  error] if error does not exist, no len(error), no error length is always a short
+
 
 class ErrorMsg:
     def __init__(self, err: str, body: str):
@@ -6,9 +8,8 @@ class ErrorMsg:
         self.body = body
     
     def marhsall(self):
-        errbytes = self.err.encode('utf-8')
-        bodybytes = self.body.encode('utf-8') 
-        return struct.pack('<H', len(errbytes)) + struct.pack('<' + str(len(errbytes))+'s', errbytes) + struct.pack('<H', len(bodybytes)) + struct.pack('<' + str(len(bodybytes))+'s', bodybytes)
+        #save each in little endian format 
+        return struct.pack('<H', len(self.err)) + struct.pack('<{}s'.format(len(self.err)), self.err.encode('utf-8')) + struct.pack('<H', len(self.body)) + struct.pack('<{}s'.format(len(self.body)), self.body.encode('utf-8'))
 
     def printmessage(self):
         print("The Error is : ", self.err, "\nDetails: ", self.body)
@@ -65,7 +66,7 @@ class message:
 
 
 
-        #message format [len(rpc)   rpc   len(query)   query len(body)  body   len(error)  error] if error does not exist, no len(error), no error
+       
         
 
 
