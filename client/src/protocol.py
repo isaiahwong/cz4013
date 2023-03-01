@@ -18,7 +18,6 @@ class Stream:
             size = len(data)
             if size > self.maxFrameSize:
                 size = self.maxFrameSize
-
             frame.Data = bts[:size]
             bts = bts[size:]
             self.session.writeFrame(frame=Frame(Flag.PSH, self.sid, data))
