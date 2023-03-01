@@ -6,6 +6,8 @@ import java.net.DatagramSocket;
 import java.net.InetAddress;
 import java.net.SocketException;
 
+//use hash map to rearrange packets, have a flag use in python , utf-16-le
+
 public class Client{
 
  public static void main(String[] argv) {
