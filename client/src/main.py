@@ -3,9 +3,10 @@ import time
 
 
 def main():
-    s = Client()
+    s = Client("127.0.0.1") #make it into an address 
     stream: Stream = s.open()
     stream.write(bytearray("hello, world!", "utf-8"))
+    print("Receving....")
     res = stream.read()
     print(res)
 
