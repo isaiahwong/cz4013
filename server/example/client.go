@@ -34,13 +34,14 @@ func monitorUpdates() {
 		panic(err)
 	}
 
-	v := rpc.Message{
+	v := &rpc.Message{
 		RPC: "MonitorUpdates",
 		Query: map[string]string{
 			"timestamp": fmt.Sprintf("%v", time.Now().Add(10000*time.Second).Unix()*1000),
 			"seats":     "10",
 		},
-		Body: []byte{}}
+		Body: []byte{},
+	}
 	b, err := encoding.Marshal(v)
 	if err != nil {
 		panic(err)
@@ -56,10 +57,10 @@ func monitorUpdates() {
 			panic(err)
 		}
 
-		var m rpc.Message
+		m := new(rpc.Message)
 		flight := new(rpc.Flight)
 
-		if err = encoding.Unmarshal(res[:n], &m); err != nil && err != io.EOF {
+		if err = encoding.Unmarshal(res[:n], m); err != nil && err != io.EOF {
 			panic(err)
 		}
 
@@ -98,7 +99,7 @@ func reserveFlight() {
 		if err != nil {
 			panic(err)
 		}
-		v := rpc.Message{
+		v := &rpc.Message{
 			RPC: "ReserveFlight",
 			Query: map[string]string{
 				"id":    "5653",
@@ -120,10 +121,10 @@ func reserveFlight() {
 			panic(err)
 		}
 
-		var m rpc.Message
+		m := new(rpc.Message)
 		flight := new(rpc.Flight)
 
-		if err = encoding.Unmarshal(res[:n], &m); err != nil && err != io.EOF {
+		if err = encoding.Unmarshal(res[:n], m); err != nil && err != io.EOF {
 			panic(err)
 		}
 

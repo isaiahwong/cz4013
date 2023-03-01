@@ -16,12 +16,12 @@ class Stream:
         frame = Frame(Flag.PSH, self.sid, data)  # create the frame
         bts = data
         while len(bts) > 0:
-            size = len(data)
+            size = len(bts)
             if size > self.maxFrameSize:
                 size = self.maxFrameSize
             frame.Data = bts[:size]
             bts = bts[size:]
-            self.session.writeFrame(frame=Frame(Flag.PSH, self.sid, data))
+            self.session.writeFrame(frame=frame)
         self.session.writeFrame(frame=Frame(Flag.ACK, self.sid))
 
     def read(self):
@@ -64,12 +64,12 @@ class Session:
         sid = uuid.uuid4().bytes[:16]
         # calling the writeframe function to send synchronization
         self.writeFrame(frame=Frame(Flag.SYN, bytes(sid)))
-        stream = Stream(self, bytes(sid), 1024)
+        stream = Stream(self, bytes(sid), 1024 - Header.header_size)
         self.streams[str(sid)] = stream
         return stream
 
     def writeFrame(self, frame: Frame, deadline: int = 0):
-        self.sock.sendto(frame.buffer, self.target)  # why not sendall why sendto?
+        self.sock.sendto(frame.buffer, self.target)
 
 
 class Client:

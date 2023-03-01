@@ -6,9 +6,9 @@ type Flight struct {
 	ID              int32
 	Source          string
 	Destination     string
-	Timestamp       uint32
 	Airfare         float32
 	SeatAvailablity int32
+	Timestamp       uint32
 }
 
 func (f *Flight) Parse(data []string) error {
