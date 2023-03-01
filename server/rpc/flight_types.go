@@ -8,16 +8,16 @@ type Flight struct {
 	Destination     string
 	Timestamp       uint32
 	Airfare         float32
-	SeatAvailablity uint32
+	SeatAvailablity int32
 }
 
 func (f *Flight) Parse(data []string) error {
-	id, err := strconv.Atoi(data[0])
+	id, err := strconv.ParseInt(data[0], 10, 64)
 	if err != nil {
 		return err
 	}
 
-	timestamp, err := strconv.Atoi(data[3])
+	timestamp, err := strconv.ParseInt(data[3], 10, 64)
 	if err != nil {
 		return err
 	}
@@ -27,7 +27,7 @@ func (f *Flight) Parse(data []string) error {
 		return err
 	}
 
-	seatAvail, err := strconv.Atoi(data[5])
+	seatAvail, err := strconv.ParseInt(data[5], 10, 64)
 	if err != nil {
 		return err
 	}
@@ -37,6 +37,6 @@ func (f *Flight) Parse(data []string) error {
 	f.Destination = data[2]
 	f.Timestamp = uint32(timestamp)
 	f.Airfare = float32(airfare)
-	f.SeatAvailablity = uint32(seatAvail)
+	f.SeatAvailablity = int32(seatAvail)
 	return nil
 }

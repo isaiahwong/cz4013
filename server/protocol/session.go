@@ -8,6 +8,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/sirupsen/logrus"
 )
 
@@ -31,7 +32,7 @@ type Session struct {
 	// mutex streams
 	streamMux sync.Mutex
 	// mapping of sid to streams.
-	streams  map[uint32]*Stream
+	streams  map[string]*Stream
 	chWrites chan writeRequest
 
 	maxFrameSize int
@@ -70,7 +71,7 @@ func NewSession(conn *net.UDPConn, client bool) *Session {
 	s.capacity = 1024
 	s.logger = logrus.New()
 	s.maxFrameSize = 1024
-	s.streams = make(map[uint32]*Stream)
+	s.streams = make(map[string]*Stream)
 
 	s.chDie = make(chan struct{})
 	s.chWrites = make(chan writeRequest)
@@ -123,15 +124,17 @@ func (s *Session) Open(addr *net.UDPAddr) (*Stream, error) {
 	}
 
 	// generate stream id
-	s.nextStreamIDMux.Lock()
+	// s.nextStreamIDMux.Lock()
 
-	s.nextStreamID += 2
-	sid := s.nextStreamID
-	s.nextStreamIDMux.Unlock()
+	// s.nextStreamID += 2
+	// sid := s.nextStreamID
+	// s.nextStreamIDMux.Unlock()
 
-	stream := NewStream(s, sid, s.maxFrameSize, addr)
+	sid := uuid.New()
 
-	if _, err := s.writeFrame(NewFrame(SYN, sid), time.After(OpenCloseTimeout)); err != nil {
+	stream := NewStream(s, sid[:], s.maxFrameSize, addr)
+
+	if _, err := s.writeFrame(NewFrame(SYN, sid[:]), time.After(OpenCloseTimeout)); err != nil {
 		return nil, err
 	}
 
@@ -145,7 +148,7 @@ func (s *Session) Open(addr *net.UDPAddr) (*Stream, error) {
 	case <-s.chProtoError:
 		return nil, s.protoError.Load().(error)
 	default:
-		s.streams[sid] = stream
+		s.streams[string(sid[:])] = stream
 		return stream, nil
 	}
 }
@@ -180,9 +183,9 @@ func (s *Session) recvLoop() {
 		case SYN:
 			s.streamMux.Lock()
 			// Create new stream
-			if _, ok := s.streams[sid]; !ok {
+			if _, ok := s.streams[string(sid)]; !ok {
 				stream := NewStream(s, sid, s.maxFrameSize, addr)
-				s.streams[sid] = stream
+				s.streams[string(sid)] = stream
 				select {
 				case <-s.chDie:
 				case s.chStreamAccept <- stream:
@@ -196,7 +199,7 @@ func (s *Session) recvLoop() {
 			newbuf := make([]byte, int(hdr.Length()))
 			copy(newbuf, b[HeaderSize:HeaderSize+int(hdr.Length())])
 			s.streamMux.Lock()
-			if stream, ok := s.streams[sid]; ok {
+			if stream, ok := s.streams[string(sid)]; ok {
 				stream.pushBytes(newbuf)
 				// atomic.AddInt32(&s.bucket, -int32(written))
 				stream.notifyReadEvent()
@@ -205,13 +208,13 @@ func (s *Session) recvLoop() {
 
 		case ACK:
 			s.streamMux.Lock()
-			if stream, ok := s.streams[sid]; ok {
+			if stream, ok := s.streams[string(sid)]; ok {
 				stream.notifyACKEvent()
 			}
 			s.streamMux.Unlock()
 		case FIN:
 			s.streamMux.Lock()
-			if stream, ok := s.streams[sid]; ok {
+			if stream, ok := s.streams[string(sid)]; ok {
 				stream.fin()
 				// remove blocks to on going read
 				stream.notifyReadEvent()
@@ -226,9 +229,9 @@ func (s *Session) recvLoop() {
 }
 
 // notify the session that a stream has closed
-func (s *Session) streamClosed(sid uint32) {
+func (s *Session) streamClosed(sid []byte) {
 	s.streamMux.Lock()
-	delete(s.streams, sid)
+	delete(s.streams, string(sid))
 	s.streamMux.Unlock()
 }
 
@@ -274,7 +277,7 @@ func (s *Session) sendLoop() {
 				s.conn.Write(buf[:HeaderSize+len(request.frame.Data)])
 			} else {
 				// Retrieve the stream
-				stream, ok := s.streams[request.frame.Sid]
+				stream, ok := s.streams[string(request.frame.Sid)]
 				if ok {
 					s.conn.WriteToUDP(buf[:HeaderSize+len(request.frame.Data)], stream.addr)
 				} else {

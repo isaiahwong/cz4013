@@ -8,7 +8,6 @@ import (
 
 	"github.com/isaiahwong/cz4013/common"
 	"github.com/isaiahwong/cz4013/rpc"
-	"github.com/isaiahwong/cz4013/store"
 	"github.com/sirupsen/logrus"
 )
 
@@ -26,8 +25,8 @@ type Server struct {
 	rpc    *rpc.RPC
 	addr   *net.UDPAddr
 
-	dbMux sync.Mutex
-	db    *store.DB
+	dbMux      sync.Mutex
+	flightRepo *rpc.FlightRepo
 }
 
 // Serve starts the server with blocking call
@@ -111,7 +110,7 @@ func New(opt ...Option) *Server {
 
 	s.opts = opts
 	s.logger = opts.logger
-	s.rpc = rpc.New(opts.deadline)
+	s.rpc = rpc.New(opts.flightRepo, opts.deadline)
 
 	return s
 }

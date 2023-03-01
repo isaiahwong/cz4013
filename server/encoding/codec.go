@@ -17,12 +17,13 @@ func GetCodec(v interface{}) (Codec, error) {
 }
 
 func getCodec(t reflect.Value) (Codec, error) {
-
 	switch t.Kind() {
 	case reflect.String:
 		return new(stringCodec), nil
 	case reflect.Bool:
 		return new(boolCodec), nil
+	case reflect.Int:
+		return new(intCodec), nil
 	case reflect.Int32:
 		return new(int32Codec), nil
 	case reflect.Int64:
@@ -81,6 +82,20 @@ func (c *stringCodec) Encode(e *Encoder, rv reflect.Value) error {
 func (c *stringCodec) Decode(d *Decoder, rv reflect.Value) (err error) {
 	if s, err := d.readString(); err == nil {
 		rv.SetString(s)
+	}
+	return
+}
+
+type intCodec struct{}
+
+func (c *intCodec) Encode(e *Encoder, rv reflect.Value) error {
+	return e.writeInt(int(rv.Int()))
+}
+
+// Decode decodes into a reflect value from the decoder.
+func (c *intCodec) Decode(d *Decoder, rv reflect.Value) (err error) {
+	if b, err := d.readInt(); err == nil {
+		rv.SetInt(int64(b))
 	}
 	return
 }
@@ -437,7 +452,7 @@ func newSliceCodec(t reflect.Value) (Codec, error) {
 	if t.Len() == 0 {
 		return &sliceCodec{}, nil
 	}
-	v := reflect.New(t.Type())
+	v := reflect.Indirect(reflect.New(t.Type().Elem()))
 	codec, err := getCodec(v)
 	if err != nil {
 		return nil, err

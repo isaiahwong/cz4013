@@ -10,7 +10,7 @@ import (
 )
 
 type Stream struct {
-	sid uint32
+	sid []byte
 
 	session *Session
 
@@ -40,14 +40,14 @@ var (
 	ErrMayBlock        = errors.New("op may block on IO")
 )
 
-func NewStream(sess *Session, sid uint32, frameSize int, addr *net.UDPAddr) *Stream {
+func NewStream(sess *Session, sid []byte, frameSize int, addr *net.UDPAddr) *Stream {
 	s := new(Stream)
 	s.sid = sid
-	s.frameSize = frameSize
+	s.frameSize = frameSize - HeaderSize
 	s.session = sess
 	s.addr = addr
-	s.chRead = make(chan struct{}, 1)
-	s.chAck = make(chan struct{}, 1)
+	s.chRead = make(chan struct{})
+	s.chAck = make(chan struct{}, 1) // limit to 1
 	s.chFin = make(chan struct{})
 	s.chDie = make(chan struct{})
 	return s
@@ -78,29 +78,40 @@ func (s *Stream) Close() error {
 	return nil
 }
 
+func (s *Stream) IsClosed() bool {
+	select {
+	case <-s.chDie:
+		return true
+	case <-s.chFin:
+		return true
+	default:
+		return false
+	}
+}
+
 // Implements io.Reader
 func (s *Stream) Read(b []byte) (int, error) {
-	var n int
+	n := 0
 	for {
-		n += s.read(b)
-		flag, err := s.waitRead()
-		if err != nil && err != io.EOF {
-			return n, err
-		}
-		if flag == ACK {
+		n += s.read(b, n)
+		err := s.waitRead()
+		if err == io.EOF {
 			return n, nil
+		}
+		if err != nil {
+			return n, err
 		}
 	}
 }
 
-func (s *Stream) read(b []byte) (n int) {
+func (s *Stream) read(b []byte, offset int) (n int) {
 	if len(b) == 0 {
 		return 0
 	}
 
 	s.bufferMux.Lock()
 	if len(s.buffers) > 0 {
-		n = copy(b, s.buffers[0])
+		n = copy(b[offset:offset+len(s.buffers[0])], s.buffers[0])
 		s.buffers[0] = s.buffers[0][n:]
 		// Read finish
 		if len(s.buffers[0]) == 0 {
@@ -109,10 +120,11 @@ func (s *Stream) read(b []byte) (n int) {
 		}
 	}
 	s.bufferMux.Unlock()
+
 	return n
 }
 
-func (s *Stream) waitRead() (byte, error) {
+func (s *Stream) waitRead() error {
 	var timer *time.Timer
 	var deadline <-chan time.Time
 	if d, ok := s.rDeadline.Load().(time.Time); ok && !d.IsZero() {
@@ -123,24 +135,28 @@ func (s *Stream) waitRead() (byte, error) {
 
 	select {
 	case <-s.chRead:
-		return PSH, nil
+		return nil
 	case <-s.chAck:
-		return ACK, nil
+		if len(s.buffers) > 0 {
+			s.notifyACKEvent() // if ack is consumed, notify again until buffer is empty
+			return nil
+		}
+		return io.EOF
 	case <-s.chFin:
 		s.bufferMux.Lock()
 		defer s.bufferMux.Unlock()
 		if len(s.buffers) > 0 {
-			return FIN, nil
+			return nil
 		}
-		return NOP, io.EOF
+		return io.EOF
 	case <-deadline:
-		return NOP, ErrTimeout
+		return ErrTimeout
 	case <-s.chDie:
-		return NOP, io.ErrClosedPipe
+		return io.ErrClosedPipe
 	case <-s.session.chSocketReadError:
-		return NOP, s.session.socketReadError.Load().(error)
+		return s.session.socketReadError.Load().(error)
 	case <-s.session.chProtoError:
-		return NOP, s.session.protoError.Load().(error)
+		return s.session.protoError.Load().(error)
 	}
 }
 

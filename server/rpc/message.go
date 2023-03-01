@@ -12,8 +12,16 @@ type Message struct {
 	Error *Error
 }
 
-func NewError(err error, body string) *Message {
+func NewMessage(rpc string, body []byte) *Message {
 	return &Message{
+		RPC:  rpc,
+		Body: body,
+	}
+}
+
+func NewError(method string, err error, body string) *Message {
+	return &Message{
+		RPC: method,
 		Error: &Error{
 			Error: err.Error(),
 			Body:  body,

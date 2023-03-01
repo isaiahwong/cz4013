@@ -10,69 +10,31 @@ import (
 	"github.com/isaiahwong/cz4013/store"
 )
 
-var flights = []rpc.Flight{}
+var flights = []*rpc.Flight{}
 var db *store.DB
+var flightRepo *rpc.FlightRepo
 
 func init() {
 	// Load flights from csv
-	common.LoadCSV("flights.csv", &flights)
+	if err := common.LoadCSV("flights.csv", &flights); err != nil {
+		panic(err)
+	}
 	db = store.New()
-
 	fType := new(rpc.Flight)
-	db.CreateRelation("flights", reflect.TypeOf(fType))
-	db.BulkInsert("flights", flights)
+	if err := db.CreateRelation("flights", reflect.TypeOf(fType)); err != nil {
+		panic(err)
+	}
+	if err := db.BulkInsert("flights", flights); err != nil {
+		panic(err)
+	}
+
+	flightRepo = rpc.NewFlightRepo(db)
 }
 
 func main() {
 	s := protocol.New(
 		protocol.WithDeadline(5*time.Second),
-		protocol.WithDB(db),
+		protocol.WithFlightRepo(flightRepo),
 	)
 	s.Serve()
 }
-
-// package main
-
-// import (
-// 	"fmt"
-// 	"net"
-// 	"time"
-// )
-
-// const serverPort = ":8080"
-
-// func main() {
-// 	fmt.Println("A  Basic UDP Server Example")
-
-// 	ServerAddr, err := net.ResolveUDPAddr("udp", serverPort)
-// 	if err != nil {
-// 		panic(err)
-// 	}
-
-// 	ServerConn, err := net.ListenUDP("udp", ServerAddr)
-// 	if err != nil {
-// 		panic(err)
-// 	}
-// 	defer ServerConn.Close()
-
-// 	buf := make([]byte, 1024)
-// 	go func() {
-// 		for {
-// 			n, addr, err := ServerConn.ReadFromUDP(buf)
-// 			fmt.Println("Received ", string(buf[0:n]), " from ", addr)
-
-// 			if err != nil {
-// 				fmt.Println("Error: ", err)
-// 			}
-// 			time.Sleep(time.Second * 5)
-// 			//after we got something, respond with an "OK" to the client
-// 			buf = []byte("OK")
-// 			ServerConn.WriteToUDP(buf, addr)
-// 		}
-// 	}()
-
-// 	fmt.Println("Waiting for clients to connect. Server port " + serverPort)
-
-// 	//blocking forever
-// 	select {}
-// }

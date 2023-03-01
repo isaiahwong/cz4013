@@ -69,6 +69,15 @@ func (e *Encoder) writeString(v string) error {
 	return binary.Write(e.out, binary.LittleEndian, []byte(v))
 }
 
+// writeInt
+func (e *Encoder) writeInt(n int) error {
+	err := binary.Write(e.out, binary.LittleEndian, n)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
 // writeInt32 writes a 32 bit integer
 func (e *Encoder) writeInt32(n int32) error {
 	err := binary.Write(e.out, binary.LittleEndian, n)

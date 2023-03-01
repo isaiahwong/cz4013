@@ -61,7 +61,7 @@ class Session:
         self.streams = {}
 
     def open(self):
-        sid = uid.uuid4().bytes[:16]
+        sid = uuid.uuid4().bytes[:16]
         # calling the writeframe function to send synchronization
         self.writeFrame(frame=Frame(Flag.SYN, bytes(sid)))
         stream = Stream(self, bytes(sid), 1024)

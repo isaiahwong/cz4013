@@ -16,7 +16,6 @@ func Unmarshal(data []byte, v interface{}) error {
 	if err != nil {
 		return err
 	}
-
 	return nil
 }
 
@@ -55,6 +54,14 @@ func (d *Decoder) readString() (string, error) {
 		return "", err
 	}
 	return string(strBytes), nil
+}
+
+// readInt
+func (d *Decoder) readInt() (n int, err error) {
+	if err = binary.Read(d.reader, binary.LittleEndian, &n); err != nil {
+		return 0, err
+	}
+	return
 }
 
 // writeInt32 writes a 8 bit integer

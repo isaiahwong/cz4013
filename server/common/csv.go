@@ -27,6 +27,14 @@ func LoadCSV(file string, list interface{}) error {
 		return err
 	}
 
+	l := reflect.ValueOf(list)
+
+	if l.Kind() != reflect.Ptr {
+		return errors.New("list must be a pointer")
+	}
+
+	l = reflect.Indirect(l)
+
 	for {
 		// Read each record from CSV
 		record, err := reader.Read()
@@ -37,19 +45,14 @@ func LoadCSV(file string, list interface{}) error {
 			return err
 		}
 		t := reflect.Indirect(reflect.ValueOf(list)).Type()
-		e := reflect.New(t.Elem())
+		e := reflect.New(t.Elem().Elem())
 		parsable, ok := e.Interface().(CSVParser)
 		if !ok {
 			return errors.New("Not a CSVParser")
 		}
 		parsable.Parse(record)
 		// Append parsable to list
-		reflect.ValueOf(list).Elem().Set(
-			reflect.Append(
-				reflect.ValueOf(list).Elem(), e.Elem(),
-			),
-		)
-
+		l.Set(reflect.Append(l, e))
 	}
 
 	return nil

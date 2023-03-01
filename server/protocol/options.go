@@ -3,16 +3,16 @@ package protocol
 import (
 	"time"
 
-	"github.com/isaiahwong/cz4013/store"
+	"github.com/isaiahwong/cz4013/rpc"
 	"github.com/sirupsen/logrus"
 )
 
 type options struct {
-	logger   *logrus.Logger
-	port     string
-	semantic Semantics
-	deadline time.Duration
-	db       *store.DB
+	logger     *logrus.Logger
+	port       string
+	semantic   Semantics
+	deadline   time.Duration
+	flightRepo *rpc.FlightRepo
 }
 
 // Option sets options for Server.
@@ -44,8 +44,8 @@ func WithLogger(l *logrus.Logger) Option {
 	}
 }
 
-func WithDB(db *store.DB) Option {
+func WithFlightRepo(f *rpc.FlightRepo) Option {
 	return func(o *options) {
-		o.db = db
+		o.flightRepo = f
 	}
 }
