@@ -40,9 +40,9 @@ class message:
         querybytes = json.dumps(self.query).encode('utf-8')
         if self.error:
             errbytes = self.error.marhsall()
-            return struct.pack('<H', len(rpcbytes)) + struct.pack('<' + str(len(rpcbytes))+'s', rpcbytes) + struct.pack('<H', len(querybytes))+ struct.pack('<' + str(len(querybytes))+'s', querybytes)+struct.pack('<H', len(self.body))+self.body+struct.pack('<H', len(errbytes))+errbytes
+            return bytearray(struct.pack('<H', len(rpcbytes)) + struct.pack('<' + str(len(rpcbytes))+'s', rpcbytes) + struct.pack('<H', len(querybytes))+ struct.pack('<' + str(len(querybytes))+'s', querybytes)+struct.pack('<H', len(self.body))+self.body+struct.pack('<H', len(errbytes))+errbytes)
         else:
-            return struct.pack('<H', len(rpcbytes))+struct.pack('<' + str(len(rpcbytes))+'s', rpcbytes)+struct.pack('<H', len(querybytes))+struct.pack('<' + str(len(querybytes))+'s', querybytes)+struct.pack('<H', len(self.body))+self.body
+            return bytearray(struct.pack('<H', len(rpcbytes))+struct.pack('<' + str(len(rpcbytes))+'s', rpcbytes)+struct.pack('<H', len(querybytes))+struct.pack('<' + str(len(querybytes))+'s', querybytes)+struct.pack('<H', len(self.body))+self.body)
 
     @classmethod
     def unmarshall(cls, data):

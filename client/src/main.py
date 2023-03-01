@@ -14,7 +14,6 @@ def main():
     
     unmar = message.unmarshall(to_send)
     unmar.printmessage()
-    
     stream.write(to_send)
     print("Receving....")
     res = stream.read()
