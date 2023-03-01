@@ -7,7 +7,7 @@ def main():
     s = Client("127.0.0.1") #make it into an address 
     stream: Stream = s.open()
     err = ErrorMsg("test", "test1")
-    to_send = message("SearchFlights", {'temp1':'temp2'}, bytearray("hello!", "utf-8"), err)
+    to_send = message("ReserveFlight", {"id":"5653","seats":"5"}, bytearray("", "utf-8"), None)
     to_send.printmessage()
     to_send = to_send.marhsall()
     print("Sending the marhsalled message: ", to_send.hex())

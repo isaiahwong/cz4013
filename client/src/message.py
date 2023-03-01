@@ -32,7 +32,8 @@ class message:
 
     def printmessage(self):
         print("The Message is: ", self.rpc, "\n Query is: ", self.query, "\n Body is:", self.body, " ")
-        self.error.printmessage()
+        if self.error:
+            self.error.printmessage()
 
     def marhsall(self):
         rpcbytes = self.rpc.encode('utf-8') 
@@ -60,6 +61,11 @@ class message:
         else:
             error = None 
         return cls(rpc, query, body, error)
+
+
+
+
+        #message format [len(rpc)   rpc   len(query)   query len(body)  body   len(error)  error] if error does not exist, no len(error), no error
         
 
 
