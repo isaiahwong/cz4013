@@ -44,8 +44,8 @@ func (e *Encoder) marshal(v interface{}) error {
 		return err
 	}
 
-	rv := reflect.Indirect(reflect.ValueOf(v))
-	return c.Encode(e, rv)
+	// rv := reflect.Indirect(reflect.ValueOf(v))
+	return c.Encode(e, reflect.ValueOf(v))
 }
 
 // write writes the contents of p into the buffer.

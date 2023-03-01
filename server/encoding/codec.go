@@ -2,6 +2,7 @@ package encoding
 
 import (
 	"errors"
+	"fmt"
 	"reflect"
 )
 
@@ -12,8 +13,11 @@ type Codec interface {
 }
 
 func GetCodec(v interface{}) (Codec, error) {
-	rv := reflect.Indirect(reflect.ValueOf(v))
-	return getCodec(rv)
+	return getCodec(reflect.ValueOf(v))
+}
+
+func GetCodecWithRV(v reflect.Value) (Codec, error) {
+	return getCodec(v)
 }
 
 func getCodec(t reflect.Value) (Codec, error) {
@@ -250,7 +254,7 @@ func (p *ptrCodec) Encode(e *Encoder, rv reflect.Value) (err error) {
 	}
 	// Mark as not nil.
 	e.writeBool(false)
-	err = p.codec.Encode(e, rv.Elem())
+	err = p.codec.Encode(e, reflect.Indirect(rv))
 	return
 }
 
@@ -550,7 +554,7 @@ func (c *slicePtrCodec) Decode(d *Decoder, rv reflect.Value) (err error) {
 	var l uint64
 	var isNil bool
 	if l, err = d.readUint64(); err == nil && l > 0 {
-
+		fmt.Println(rv.CanSet())
 		rv.Set(reflect.MakeSlice(rv.Type(), int(l), int(l)))
 		for i := 0; i < int(l); i++ {
 

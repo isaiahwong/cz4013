@@ -47,6 +47,7 @@ func (r *RPC) HandleRequest(read Readable, write Writable) error {
 }
 
 func (r *RPC) router(m *Message, read Readable, write Writable) error {
+
 	if m.RPC == "FindFlights" {
 		return r.FindFlights(m, read, write)
 	} else if m.RPC == "FindFlight" {
@@ -73,7 +74,6 @@ func (r *RPC) errorMessage(method string, err error, body string, read Readable,
 
 func (r *RPC) ok(rpc string, body []byte, read Readable, write Writable) error {
 	message := NewMessage(rpc, body)
-
 	b, err := encoding.Marshal(message)
 	if err != nil {
 		return err

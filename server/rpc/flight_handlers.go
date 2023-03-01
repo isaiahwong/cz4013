@@ -52,6 +52,10 @@ func (r *RPC) FindFlights(m *Message, read Readable, write Writable) error {
 		}
 	}
 
+	for _, f := range filteredFlights {
+		fmt.Println(*f)
+	}
+
 	b, err := encoding.Marshal(filteredFlights)
 	if err != nil {
 		return r.errorMessage(method, err, "", read, write)

@@ -26,11 +26,27 @@ func newDecoder(data []byte) *Decoder {
 }
 
 func (d *Decoder) unmarshal(v interface{}) error {
-	c, err := GetCodec(v)
+	var err error
+	var c Codec
+
+	rv := reflect.ValueOf(v)
+	// slice cannot be passed directly and need to be passed by reference
+	// as such, the GetCodec will evaluate it as a pointer where the
+	// marshal would evaluate it as a slice I.E. not set the ptr flag.
+	// Hence we need to convert a slice pointer to a slice to retrieve
+	// The actual codec for slice. We then take the Elem() to make it
+	// Addressable
+	if rv.Kind() == reflect.Ptr && rv.Elem().Kind() == reflect.Slice {
+		c, err = GetCodecWithRV(reflect.Indirect(rv))
+		rv = reflect.ValueOf(v).Elem()
+	} else {
+		c, err = GetCodec(v)
+	}
 	if err != nil {
 		return err
 	}
-	rv := reflect.Indirect(reflect.ValueOf(v))
+
+	// rv := reflect.Indirect(reflect.ValueOf(v))
 	return c.Decode(d, rv)
 }
 

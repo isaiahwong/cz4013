@@ -10,6 +10,20 @@ import (
 	"github.com/isaiahwong/cz4013/store"
 )
 
+// func main() {
+// 	f := &rpc.Flight{Source: "asdas"}
+// 	b, err := encoding.Marshal(f)
+// 	if err != nil {
+// 		panic(err)
+// 	}
+// 	f2 := new(rpc.Flight)
+// 	err = encoding.Unmarshal(b, f2)
+// 	if err != nil {
+// 		panic(err)
+// 	}
+// 	print(f2.Source)
+// }
+
 var flights = []*rpc.Flight{}
 var db *store.DB
 var flightRepo *rpc.FlightRepo
