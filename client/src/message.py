@@ -1,5 +1,5 @@
 import struct, json, ast
- #message format [len(rpc)   rpc   len(query)   query len(body)  body   len(error)  error] if error does not exist, no len(error), no error length is always a short
+ #message format [len(rpc)   rpc   len(query)   query len(body)  body   len(error)  error] if error does not exist, no len(error), no error;  length is always a short
 
 
 class ErrorMsg:
