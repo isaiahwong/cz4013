@@ -6,7 +6,7 @@ import uuid
 
 
 class Stream:
-    def __init__(self, sess, sid, maxFrameSize, deadline=5):
+    def __init__(self, sess, sid, maxFrameSize, deadline):
         self.session = sess  # the session
         self.sid = sid  # session id
         self.maxFrameSize = maxFrameSize  # max frame size in the session
@@ -25,6 +25,27 @@ class Stream:
         self.session.writeFrame(frame=Frame(Flag.ACK, self.sid))
 
     def read(self):
+        if not self.deadline:
+            return self.readIndefinitely()
+        return self.readWithTimeout()
+
+    def readIndefinitely(self):
+        res = []
+        dataBuffer = bytearray()
+
+        while True:
+            d, addr = self.session.sock.recvfrom(1024)
+            buffer = bytearray(d)
+            header = Header(buffer)
+
+            self._read(header, res, dataBuffer, buffer)
+
+            if header.flag() == Flag.FIN.value or header.flag() == Flag.ACK.value:
+                break
+
+        return res
+
+    def readWithTimeout(self):
         res = []
         dataBuffer = bytearray()
 
@@ -37,18 +58,26 @@ class Stream:
             buffer = bytearray(d)
             header = Header(buffer)
 
-            if header.flag() == Flag.PSH.value:
-                if header.length() <= 0:
-                    continue
-                dataBuffer.extend(
-                    buffer[header.header_size : header.header_size + header.length()]
-                )
-            elif header.flag() == Flag.ACK.value:
-                res.append(dataBuffer)
-                dataBuffer = bytearray()
-            elif header.flag() == Flag.FIN.value:
+            self._read(header, res, dataBuffer, buffer)
+
+            if header.flag() == Flag.FIN.value or header.flag() == Flag.ACK.value:
                 break
+
         return res
+
+    def _read(
+        self, header: Header, res: list, dataBuffer: bytearray, buffer: bytearray
+    ):
+        if header.flag() == Flag.PSH.value and header.length() > 0:
+            dataBuffer.extend(
+                buffer[header.header_size : header.header_size + header.length()]
+            )
+        elif header.flag() == Flag.ACK.value:
+            res.append(dataBuffer)
+            dataBuffer = bytearray()
+            return
+        elif header.flag() == Flag.FIN.value:
+            return
 
     def close(self):
         self.session.writeFrame(frame=Frame(Flag.FIN, self.sid))
@@ -60,11 +89,11 @@ class Session:
         self.target = target
         self.streams = {}
 
-    def open(self):
+    def open(self, deadline: int):
         sid = uuid.uuid4().bytes[:16]
         # calling the writeframe function to send synchronization
         self.writeFrame(frame=Frame(Flag.SYN, bytes(sid)))
-        stream = Stream(self, bytes(sid), 1024 - Header.header_size)
+        stream = Stream(self, bytes(sid), 1024 - Header.header_size, deadline)
         self.streams[str(sid)] = stream
         return stream
 
@@ -84,5 +113,5 @@ class Client:
             sock=self.sock, target=(addr, port)
         )  # call the session class
 
-    def open(self):
-        return self.session.open()
+    def open(self, deadline: int):
+        return self.session.open(deadline=deadline)

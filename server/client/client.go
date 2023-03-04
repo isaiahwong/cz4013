@@ -33,12 +33,11 @@ func monitorUpdates() {
 	if err != nil {
 		panic(err)
 	}
-	fmt.Println(time.Now().Add(10000*time.Second).Unix()*1000)
+
 	v := &rpc.Message{
 		RPC: "MonitorUpdates",
 		Query: map[string]string{
 			"timestamp": fmt.Sprintf("%v", time.Now().Add(10000*time.Second).Unix()*1000),
-			"seats":     "10",
 		},
 		Body: []byte{},
 	}
@@ -101,7 +100,7 @@ func reserveFlight() {
 			RPC: "ReserveFlight",
 			Query: map[string]string{
 				"id":    "5653",
-				"seats": "5",
+				"seats": "1",
 			},
 			Body: []byte{},
 		}
@@ -180,7 +179,6 @@ func reserveFlight() {
 }
 
 func main() {
-	go monitorUpdates()
-	time.Sleep(1 * time.Second)
-	reserveFlight()
+	go reserveFlight()
+	monitorUpdates()
 }

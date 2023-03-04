@@ -13,7 +13,7 @@ type Flight struct {
 
 type ReserveFlight struct {
 	ID           string
-	FID          int32
+	Flight       *Flight
 	SeatReserved int32
 }
 

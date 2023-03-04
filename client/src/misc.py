@@ -1,4 +1,5 @@
 import datetime
 
-def futuretime():
-    return (datetime.datetime.now() +datetime.timedelta(seconds=10000)).timestamp()
+
+def futuretime(seconds: int):
+    return (datetime.datetime.now() + datetime.timedelta(seconds=seconds)).timestamp()

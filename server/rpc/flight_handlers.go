@@ -135,7 +135,7 @@ func (r *RPC) ReserveFlight(m *Message, read Readable, write Writable) error {
 
 	reserve := &ReserveFlight{
 		ID:           uuid.NewString(),
-		FID:          flight.ID,
+		Flight:       flight,
 		SeatReserved: seatsInt32,
 	}
 
@@ -148,10 +148,7 @@ func (r *RPC) ReserveFlight(m *Message, read Readable, write Writable) error {
 		return r.error(method, ErrFailToReserve, err.Error(), read, write)
 	}
 
-	select {
-	case r.chFlightUpdates <- flight:
-	default:
-	}
+	r.broadcastFlights(flight)
 
 	b, err := encoding.Marshal(reserve)
 	if err != nil {
@@ -178,7 +175,7 @@ func (r *RPC) CancelFlight(m *Message, read Readable, write Writable) error {
 	}
 
 	// Retrieve flight
-	flight, err := r.flightRepo.FindByID(rf.FID)
+	flight, err := r.flightRepo.FindByID(rf.Flight.ID)
 	if err != nil {
 		return r.error(method, ErrInternalError, err.Error(), read, write)
 	}
@@ -203,10 +200,7 @@ func (r *RPC) CancelFlight(m *Message, read Readable, write Writable) error {
 		return r.error(method, ErrInternalError, err.Error(), read, write)
 	}
 
-	select {
-	case r.chFlightUpdates <- flight:
-	default:
-	}
+	r.broadcastFlights(flight)
 
 	return r.ok(method, b, read, write)
 }
@@ -223,10 +217,17 @@ func (r *RPC) MonitorUpdates(m *Message, read Readable, write Writable) error {
 		return r.error(method, ErrInvalidParams, err.Error(), read, write)
 	}
 
+	// Create channel
+	r.chFlightUpdatesMux.Lock()
+	fCh := make(chan *Flight)
+	r.chFlightUpdates = append(r.chFlightUpdates, fCh)
+	r.chFlightUpdatesMux.Unlock()
+
 	duration := time.Until(*monitorInterval)
 	for {
 		select {
-		case flight := <-r.chFlightUpdates:
+		case flight := <-fCh:
+
 			b, err := encoding.Marshal(flight)
 			if err != nil {
 				return r.error(method, err, "", read, write)

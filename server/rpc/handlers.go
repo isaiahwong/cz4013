@@ -23,7 +23,8 @@ type RPC struct {
 
 	reserveMux sync.Mutex
 
-	chFlightUpdates chan *Flight
+	chFlightUpdatesMux sync.Mutex
+	chFlightUpdates    []chan *Flight
 }
 
 // function to handle the request
@@ -88,6 +89,18 @@ func (r *RPC) ok(rpc string, body []byte, read Readable, write Writable) error {
 	return nil
 }
 
+func (r *RPC) broadcastFlights(flight *Flight) {
+	r.chFlightUpdatesMux.Lock()
+	defer r.chFlightUpdatesMux.Unlock()
+	// Broadcast
+	for _, f := range r.chFlightUpdates {
+		select {
+		case f <- flight:
+		default:
+		}
+	}
+}
+
 func New(f *FlightRepo, r *ReservationRepo, deadline time.Duration) *RPC {
 	if f == nil {
 		panic("flightRepo cannot be nil")
@@ -100,6 +113,6 @@ func New(f *FlightRepo, r *ReservationRepo, deadline time.Duration) *RPC {
 		deadline:        deadline,
 		flightRepo:      f,
 		reservationRepo: r,
-		chFlightUpdates: make(chan *Flight),
+		chFlightUpdates: []chan *Flight{},
 	}
 }

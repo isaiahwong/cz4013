@@ -17,3 +17,12 @@ class Flight:
         self.airfare = airfare
         self.seat_availability = seat_availability
         self.timestamp = timestamp
+
+
+class ReserveFlight:
+    def __init__(
+        self, id: str = "", flight: Flight = Flight(), seats_reserved: int = 0
+    ):
+        self.id = id
+        self.flight = flight
+        self.seats_reserved = seats_reserved
