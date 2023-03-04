@@ -41,8 +41,8 @@ def rpc_get_flights(IP_ADD: str, PORT: int):
         return
 
 
-def monitorUpdates(event: Event) -> None:
-    c = Client("127.0.0.1", 8080)
+def monitorUpdates(IP_ADD: str, PORT: int, event: Event) -> None:
+    c = Client(IP_ADD, PORT)
     stream = c.open(None)
 
     req = Message(
@@ -53,10 +53,7 @@ def monitorUpdates(event: Event) -> None:
     stream.write(codec.marshal(req))
 
     while True:
-        if event.is_set():
-            print("Thread stopped...")
-            break
-
+        event.wait()
         try:
             b = stream.read()
             res: Message = codec.unmarshal(b[0], Message())
@@ -78,10 +75,12 @@ def monitorUpdates(event: Event) -> None:
             print(e)
             pass
 
-        time.sleep(30)  # yield for ctx switch
+        time.sleep(1)  # yield for ctx switch
+
+    return
 
 
-def reserveFlight(IP_ADD: str, PORT: int):
+def reserveFlight(IP_ADD: str, PORT: int, reserved:list):
     c = Client(IP_ADD, PORT)
     flightid = str(input("\nEnter the plane id you wish to reserve a seat in: "))
     seats = int(input("\nEnter the number of seats you wish to reserve: "))
@@ -96,30 +95,44 @@ def reserveFlight(IP_ADD: str, PORT: int):
     else:
         r: ReserveFlight = codec.unmarshal(res.body, ReserveFlight())
         f = r.flight
+        reserved.append(r.id)
         print(
-            "Flight Details: ",
+            "Your Flight Details are: ",
             f.id,
             f.source,
             f.destination,
             f.airfare,
             f.seat_availability,
+            "Your reservation id is: ",
+            r.id,
         )
 
 
-def cancelFlight(IP_ADD: str, PORT: int):
+def cancelFlight(IP_ADD: str, PORT: int, reserved: list):
     c = Client(IP_ADD, PORT)
-    flightid = str(input("Enter the plane id you wish to cancel a seat in: "))
+
+    if len(reserved)==0:
+        print("You have no reserved flights! ")
+        return
+
+    print("Your reserved flights are: ", end=" ")
+    count = 1
+    for item in reserved:
+        print(count, ": ", item, end=" ")
+        count += 1
+    print("\n ")
+    reserveid = int(input("Enter the plane id you wish to cancel a seat in: "))
     stream = c.open(5)
 
-    req = Message(rpc="CancelFlight", query={"id": flightid})
+    req = Message(rpc="CancelFlight", query={"id": str(reserved[reserveid-1])})
     stream.write(codec.marshal(req))
     b = stream.read()
     res: Message = codec.unmarshal(b[0], Message())
     if res.error:
         res.error.printerror()
     else:
-        r: ReserveFlight = codec.unmarshal(res.body, ReserveFlight())
-        f = r.flight
+        f: Flight() = codec.unmarshal(res.body, Flight())
+        reserved.pop(reserveid-1)
         print(
             "Flight Details: ",
             f.id,
@@ -144,24 +157,30 @@ def print_menu():
 def main(IP_ADD: str, PORT: int):
     exit = False
     event = Event()
-    monitoring = Thread(target=monitorUpdates, args=(event,))
+    monitoring = Thread(target=monitorUpdates, args=(IP_ADD, PORT, event,))
+    monitoring.start()
+    event.clear()
+    reserved = []
     while not exit:
         print_menu()
         option = str(input("Enter your choice: "))
         if option == "1":
             rpc_get_flights(IP_ADD, PORT)
         elif option == "2":
-            reserveFlight(IP_ADD, PORT)
+            reserveFlight(IP_ADD, PORT, reserved)
         elif option == "3":
-            cancelFlight(IP_ADD, PORT)
+            cancelFlight(IP_ADD, PORT, reserved)
         elif option == "4":
-            monitoring.start()
-        elif option == "5":
             event.set()
+        elif option == "5":
+            event.clear()
         elif option == "6":
             print("Stopping monitoring...")
             print("exiting....")
             exit = True
+            print("tesstt")
+            monitoring.join()
+            break
         else:
             print("Invalid Option!")
             continue
