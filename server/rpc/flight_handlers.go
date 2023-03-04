@@ -137,6 +137,7 @@ func (r *RPC) ReserveFlight(m *Message, read Readable, write Writable) error {
 		ID:           uuid.NewString(),
 		Flight:       flight,
 		SeatReserved: seatsInt32,
+		CheckIn:      false,
 	}
 
 	flight.SeatAvailablity -= seatsInt32

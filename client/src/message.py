@@ -1,6 +1,6 @@
 import struct, json, ast
- #message format [len(rpc)   rpc   len(query)   query len(body)  body   len(error)  error] if error does not exist, no len(error), no error;  length is always a short int (H)
 
+# message format [len(rpc)   rpc   len(query)   query len(body)  body   len(error)  error] if error does not exist, no len(error), no error;  length is always a short int (H)
 
 
 class ErrorMsg:
@@ -9,8 +9,13 @@ class ErrorMsg:
         self.body = body
 
     def marshall(self):
-        #save each in little endian format 
-        return struct.pack('<H', len(self.err)) + struct.pack('<{}s'.format(len(self.err)), self.err.encode('utf-8')) + struct.pack('<H', len(self.body)) + struct.pack('<{}s'.format(len(self.body)), self.body.encode('utf-8'))
+        # save each in little endian format
+        return (
+            struct.pack("<H", len(self.err))
+            + struct.pack("<{}s".format(len(self.err)), self.err.encode("utf-8"))
+            + struct.pack("<H", len(self.body))
+            + struct.pack("<{}s".format(len(self.body)), self.body.encode("utf-8"))
+        )
 
     def printmessage(self):
         print("The Error is : ", self.err, "\nDetails: ", self.body)
@@ -34,7 +39,15 @@ class message:
         self.error = error
 
     def printmessage(self):
-        print("The Message is: ", self.rpc, "\n Query is: ", self.query, "\n Body is:", self.body, " ")
+        print(
+            "The Message is: ",
+            self.rpc,
+            "\n Query is: ",
+            self.query,
+            "\n Body is:",
+            self.body,
+            " ",
+        )
         if self.error:
             self.error.printmessage()
 
@@ -101,6 +114,7 @@ class Error:
     def __init__(self, error: str = "", body: str = ""):
         self.error = error
         self.body = body
+
     def printerror(self):
         print(self.error)
         print(self.body)

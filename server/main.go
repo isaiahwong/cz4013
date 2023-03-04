@@ -55,6 +55,7 @@ func init() {
 
 func main() {
 	s := protocol.New(
+		protocol.WithSemantic(protocol.AtMostOnce),
 		protocol.WithDeadline(5*time.Second),
 		protocol.WithFlightRepo(flightRepo),
 		protocol.WithReservationRepo(reservationRepo),

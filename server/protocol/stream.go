@@ -104,6 +104,11 @@ func (s *Stream) Read(b []byte) (int, error) {
 	}
 }
 
+// SID returns a string representation of byte[] sid
+func (s *Stream) SID() string {
+	return string(s.sid)
+}
+
 func (s *Stream) read(b []byte, offset int) (n int) {
 	if len(b) == 0 {
 		return 0
