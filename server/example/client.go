@@ -33,7 +33,7 @@ func monitorUpdates() {
 	if err != nil {
 		panic(err)
 	}
-
+	
 	v := &rpc.Message{
 		RPC: "MonitorUpdates",
 		Query: map[string]string{

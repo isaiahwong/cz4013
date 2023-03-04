@@ -15,7 +15,11 @@ class Encoder:
         self.out.extend(struct.pack(f"<{len(s)}s", s.encode("utf-8")))
 
     def write_int(self, i: int):
-        self.out.extend(struct.pack("<i", i))
+        try:
+            self.out.extend(struct.pack("<i", i))
+        except:
+            self.write_int64(int(i))
+
 
     def write_int32(self, i: int):
         self.out.extend(struct.pack("<i", i))

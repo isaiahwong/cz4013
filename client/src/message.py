@@ -8,7 +8,7 @@ class ErrorMsg:
         self.err = err
         self.body = body
 
-    def marhsall(self):
+    def marshall(self):
         #save each in little endian format 
         return struct.pack('<H', len(self.err)) + struct.pack('<{}s'.format(len(self.err)), self.err.encode('utf-8')) + struct.pack('<H', len(self.body)) + struct.pack('<{}s'.format(len(self.body)), self.body.encode('utf-8'))
 
@@ -101,6 +101,9 @@ class Error:
     def __init__(self, error: str = "", body: str = ""):
         self.error = error
         self.body = body
+    def printerror(self):
+        print(self.error)
+        print(self.body)
 
 
 class Message:
