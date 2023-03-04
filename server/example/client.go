@@ -33,7 +33,7 @@ func monitorUpdates() {
 	if err != nil {
 		panic(err)
 	}
-	
+	fmt.Println(time.Now().Add(10000*time.Second).Unix()*1000)
 	v := &rpc.Message{
 		RPC: "MonitorUpdates",
 		Query: map[string]string{

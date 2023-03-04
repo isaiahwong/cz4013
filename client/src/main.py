@@ -8,12 +8,14 @@ from misc import futuretime
 
 
 #Done with addition of error checking 
-def rpc_get_flights():
-    c = Client("127.0.0.1", 8080)
+def rpc_get_flights(IP_ADD:str, PORT:int):
+    c = Client(IP_ADD, PORT)
     stream = c.open()
+    source = str(intput("Enter Origin of Flight: "))
+    destination = str(input("Enter Destination of Flight: "))
     req = Message(
         rpc="FindFlights",
-        query={"source": "New York", "destination": "Houston"},
+        query={"source": source, "destination": destination},
     )
     stream.write(codec.marshal(req))
     b = stream.read()
@@ -29,37 +31,31 @@ def rpc_get_flights():
         print(f.id, f.source, f.destination, f.airfare, f.seat_availability)
 
 
-
-
 def monitorUpdates():
     c=Client("127.0.0.1",8080)
     stream=c.open()
-    print(futuretime()*1000)
+    print(int(futuretime()*1000))
     req = Message(
         rpc="MonitorUpdates",
         query={"timestamp":int(futuretime()*1000),"seats":"10"}
     )
 
-    stream.write(codec.marshal(req))
-
+    stream.write(codec.marshal(req)) #there is an error in the integer and therefore the unmarhsalling 
     b = stream.read()
     print(b)
     res: Message = codec.unmarshal(b[0], Message())
     print(res.body)
-
     if (res.error):
-        err: Error = codec.unmarshal(b[0], Error())
-        print(err.error)
-
-    flight = codec.unmarshal(res.body, Flight())
-
-    print("New Updated flight: ", flight)
-
+        res.error.printerror()
+    else:
+        flight = codec.unmarshal(res.body, Flight())
+        print("New Updated flight: ", flight)
 
 #Done 
-def reserveFlight():
-    c=Client("127.0.0.1",8080)
+def reserveFlight(IP_ADD:str, PORT:int):
+    c=Client(IP_ADD,PORT)
     stream=c.open()
+
     req = Message(
         rpc="ReserveFlight",
         query={"id":"5653","seats":"1"}
@@ -74,30 +70,15 @@ def reserveFlight():
         print("Flight Details: ", f.id, f.source, f.destination, f.airfare, f.seat_availability)
 
 
-
-def main():
+def main(IP_ADD:str, PORT:int):
     #monitorUpdates()
-    time.sleep(4)
-    rpc_get_flights()
-    time.sleep(4)
-    reserveFlight()
-    # s = Client("127.0.0.1")  # make it into an address
-    # stream: Stream = s.open()
-    # err = ErrorMsg("test", "test1")
-    # to_send = message(
-    #     "SearchFlights", {"temp1": "temp2"}, bytearray("hello!", "utf-8"), err
-    # )
-    # to_send.printmessage()
-    # to_send = to_send.marshall()
-    # print("Sending the marshalled message: ", to_send.hex())
+    reserveFlight(IP_ADD, PORT)
 
-    # unmar = message.unmarshall(to_send)
-    # unmar.printmessage()
-    # stream.write(to_send)
-    # print("Receving....")
-    # res = stream.read()
-    # print(res)
 
 
 if __name__ == "__main__":
-    main()
+   # IP_ADD = str(input("Enter the ip address: "))
+    #PORT = int(input("Enter the port: "))
+    IP_ADD = "127.0.0.1"
+    PORT = 8080
+    main(IP_ADD, PORT)

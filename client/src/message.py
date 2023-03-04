@@ -38,7 +38,7 @@ class message:
         if self.error:
             self.error.printmessage()
 
-    def marhsall(self):
+    def marshall(self):
         rpcbytes = self.rpc.encode("utf-8")
         delimiter = ":"
         querybytes = json.dumps(self.query).encode("utf-8")

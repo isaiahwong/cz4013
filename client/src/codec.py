@@ -15,17 +15,13 @@ class Encoder:
         self.out.extend(struct.pack(f"<{len(s)}s", s.encode("utf-8")))
 
     def write_int(self, i: int):
-        try:
-            self.out.extend(struct.pack("<i", i))
-        except:
-            self.write_int64(int(i))
-
-
-    def write_int32(self, i: int):
         self.out.extend(struct.pack("<i", i))
 
+    def write_int32(self, i: int):
+        self.out.extend(struct.pack("<i", int(i)))
+
     def write_int64(self, i: int):
-        self.out.extend(struct.pack("<q", i))
+        self.out.extend(struct.pack("<q", int(i))) #required argument is not an integer?
 
     def write_bytes(self, b: bytes):
         self.out.extend(b)
