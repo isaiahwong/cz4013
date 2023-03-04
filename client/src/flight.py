@@ -5,7 +5,7 @@ class Flight:
     def __init__(
         self,
         id: int = 0,
-        source: str = " ",
+        source: str = "",
         destination: str = "",
         airfare: float = 0.0,
         seat_availability: int = 0,

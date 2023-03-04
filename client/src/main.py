@@ -13,7 +13,6 @@ def rpc_get_flights(IP_ADD: str, PORT: int):
     stream = c.open(deadline=5)
     source = str(input("Enter Origin of Flight: "))
     destination = str(input("Enter Destination of Flight: "))
-   
 
     req = Message(
         rpc="FindFlights",
@@ -55,8 +54,8 @@ def monitorUpdates(event: Event) -> None:
 
     while True:
         if event.is_set():
-                print("Thread stopped...")
-                break
+            print("Thread stopped...")
+            break
 
         try:
             b = stream.read()
@@ -74,8 +73,6 @@ def monitorUpdates(event: Event) -> None:
                 flight.airfare,
                 flight.seat_availability,
             )
-
-            
 
         except Exception as e:
             print(e)
@@ -108,7 +105,8 @@ def reserveFlight(IP_ADD: str, PORT: int):
             f.seat_availability,
         )
 
-def cancelFlight(IP_ADD:str, PORT:int):
+
+def cancelFlight(IP_ADD: str, PORT: int):
     c = Client(IP_ADD, PORT)
     flightid = str(input("Enter the plane id you wish to cancel a seat in: "))
     stream = c.open(5)
@@ -131,6 +129,7 @@ def cancelFlight(IP_ADD:str, PORT:int):
             f.seat_availability,
         )
 
+
 def print_menu():
     print("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
     print("1: findFlight")
@@ -141,6 +140,7 @@ def print_menu():
     print("6: exit")
     print("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
 
+
 def main(IP_ADD: str, PORT: int):
     exit = False
     event = Event()
@@ -150,11 +150,11 @@ def main(IP_ADD: str, PORT: int):
         option = str(input("Enter your choice: "))
         if option == "1":
             rpc_get_flights(IP_ADD, PORT)
-        elif option =="2":
+        elif option == "2":
             reserveFlight(IP_ADD, PORT)
-        elif option =="3":
+        elif option == "3":
             cancelFlight(IP_ADD, PORT)
-        elif option =="4":
+        elif option == "4":
             monitoring.start()
         elif option == "5":
             event.set()
@@ -165,7 +165,7 @@ def main(IP_ADD: str, PORT: int):
         else:
             print("Invalid Option!")
             continue
-       
+
 
 if __name__ == "__main__":
     # IP_ADD = str(input("Enter the ip address: "))

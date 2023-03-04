@@ -21,7 +21,9 @@ class Encoder:
         self.out.extend(struct.pack("<i", int(i)))
 
     def write_int64(self, i: int):
-        self.out.extend(struct.pack("<q", int(i))) #required argument is not an integer?
+        self.out.extend(
+            struct.pack("<q", int(i))
+        )  # required argument is not an integer?
 
     def write_bytes(self, b: bytes):
         self.out.extend(b)
@@ -135,6 +137,8 @@ def getCodec(obj) -> Codec:
         return DictCodec(obj)
     elif isinstance(obj, list):
         return ListCodec(obj)
+    elif isinstance(obj, bool):
+        return BoolCodec()
     elif isinstance(obj, int):
         return IntCodec()
     elif isinstance(obj, float):
@@ -143,6 +147,7 @@ def getCodec(obj) -> Codec:
         return StringCodec()
     elif isinstance(obj, bytearray):
         return ByteArrayCodec()
+
     else:
         return ObjectCodec(obj)
 
