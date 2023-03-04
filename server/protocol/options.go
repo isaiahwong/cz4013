@@ -8,11 +8,12 @@ import (
 )
 
 type options struct {
-	logger     *logrus.Logger
-	port       string
-	semantic   Semantics
-	deadline   time.Duration
-	flightRepo *rpc.FlightRepo
+	logger          *logrus.Logger
+	port            string
+	semantic        Semantics
+	deadline        time.Duration
+	flightRepo      *rpc.FlightRepo
+	reservationRepo *rpc.ReservationRepo
 }
 
 // Option sets options for Server.
@@ -47,5 +48,11 @@ func WithLogger(l *logrus.Logger) Option {
 func WithFlightRepo(f *rpc.FlightRepo) Option {
 	return func(o *options) {
 		o.flightRepo = f
+	}
+}
+
+func WithReservationRepo(r *rpc.ReservationRepo) Option {
+	return func(o *options) {
+		o.reservationRepo = r
 	}
 }

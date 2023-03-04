@@ -32,13 +32,15 @@ func (db *DB) CreateRelation(relation string, t reflect.Type) error {
 	}
 	r := new(Relation)
 	r.T = t
-	r.Tuples = reflect.MakeSlice(reflect.SliceOf(t), 0, 0)
-
+	r.Tuples = reflect.MakeSlice(reflect.SliceOf(t), 0, 0).Interface()
 	db.Relation[relation] = r
 	return nil
 }
 
 func (db *DB) Insert(relation string, tuple interface{}) error {
+	db.relationMux.Lock()
+	defer db.relationMux.Unlock()
+
 	r, ok := db.Relation[relation]
 	if !ok {
 		return ErrRelationNotFound
@@ -46,13 +48,14 @@ func (db *DB) Insert(relation string, tuple interface{}) error {
 	if reflect.TypeOf(tuple) != r.T {
 		return ErrTupleRelation
 	}
-	e := reflect.Indirect(reflect.ValueOf(tuple))
 
-	reflect.ValueOf(r.Tuples).Elem().Set(
-		reflect.Append(
-			reflect.ValueOf(r.Tuples).Elem(), e.Elem(),
-		),
-	)
+	slice := reflect.ValueOf(r.Tuples)
+	e := reflect.ValueOf(tuple)
+
+	r.Tuples = reflect.Append(
+		slice, e,
+	).Interface()
+
 	return nil
 }
 
@@ -77,13 +80,39 @@ func (db *DB) Update(relation string, tuple interface{}, predicate func(old inte
 	return nil
 }
 
+func (db *DB) Delete(relation string, predicate func(v interface{}) bool) error {
+	db.relationMux.Lock()
+	defer db.relationMux.Unlock()
+	r, err := db.getRelation(relation)
+
+	if err != nil {
+		return err
+	}
+
+	slice := reflect.ValueOf(r.Tuples)
+
+	n := slice.Len()
+	newSlice := reflect.MakeSlice(slice.Type(), n-1, n-1)
+
+	j := 0
+	for i := 0; i < slice.Len(); i++ {
+		if !predicate(slice.Index(i).Interface()) {
+			newSlice.Index(j).Set(slice.Index(i))
+			j++
+		}
+	}
+
+	r.Tuples = newSlice.Interface()
+	return nil
+}
+
 func (db *DB) BulkInsert(relation string, tuples interface{}) error {
 	db.relationMux.Lock()
 	defer db.relationMux.Unlock()
 
-	r, ok := db.Relation[relation]
-	if !ok {
-		return ErrRelationNotFound
+	r, err := db.getRelation(relation)
+	if err != nil {
+		return err
 	}
 	list := reflect.ValueOf(tuples)
 	if list.Type().Elem() != r.T {
@@ -96,6 +125,15 @@ func (db *DB) BulkInsert(relation string, tuples interface{}) error {
 func (db *DB) GetRelation(relation string) (*Relation, error) {
 	db.relationMux.Lock()
 	defer db.relationMux.Unlock()
+
+	r, err := db.getRelation(relation)
+	if err != nil {
+		return nil, err
+	}
+	return r, nil
+}
+
+func (db *DB) getRelation(relation string) (*Relation, error) {
 
 	r, ok := db.Relation[relation]
 	if !ok {

@@ -64,8 +64,6 @@ func monitorUpdates() {
 			panic(err)
 		}
 
-		fmt.Println(m.Error)
-
 		if err = encoding.Unmarshal(m.Body, flight); err != nil && err != io.EOF {
 			panic(err)
 		}
@@ -105,14 +103,14 @@ func reserveFlight() {
 				"id":    "5653",
 				"seats": "5",
 			},
-			Body: []byte{}}
+			Body: []byte{},
+		}
 		b, err := encoding.Marshal(v)
 		if err != nil {
 			panic(err)
 		}
 
 		stream.Write(b)
-
 		res := make([]byte, 65507)
 		stream.SetReadDeadline(time.Now().Add(5 * time.Second))
 
@@ -122,6 +120,45 @@ func reserveFlight() {
 		}
 
 		m := new(rpc.Message)
+		reservation := new(rpc.ReserveFlight)
+		if err = encoding.Unmarshal(res[:n], m); err != nil && err != io.EOF {
+			panic(err)
+		}
+
+		if m.Error != nil {
+			fmt.Printf("Error reserving: %v\n", m.Error)
+			return
+		}
+		if err = encoding.Unmarshal(m.Body, reservation); err != nil && err != io.EOF {
+			panic(err)
+		}
+		stream.Close()
+
+		stream, err = session.Open(serverAddr)
+		if err != nil {
+			panic(err)
+		}
+		cancelMsg := &rpc.Message{
+			RPC: "CancelFlight",
+			Query: map[string]string{
+				"id": reservation.ID,
+			},
+			Body: []byte{},
+		}
+		b, err = encoding.Marshal(cancelMsg)
+		if err != nil {
+			panic(err)
+		}
+
+		stream.Write(b)
+		stream.SetReadDeadline(time.Now().Add(5 * time.Second))
+
+		n, err = stream.Read(res)
+		if err != nil && err != io.EOF {
+			panic(err)
+		}
+
+		m = new(rpc.Message)
 		flight := new(rpc.Flight)
 
 		if err = encoding.Unmarshal(res[:n], m); err != nil && err != io.EOF {
@@ -129,13 +166,14 @@ func reserveFlight() {
 		}
 
 		if m.Error != nil {
-			panic(m.Error)
+			fmt.Printf("Error Cancelling: %v\n", m.Error)
+			return
 		}
-
 		if err = encoding.Unmarshal(m.Body, flight); err != nil && err != io.EOF {
 			panic(err)
 		}
 		stream.Close()
+		fmt.Println("Cancelled successfully")
 		time.Sleep(1 * time.Second)
 	}
 

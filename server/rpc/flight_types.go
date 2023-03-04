@@ -11,6 +11,12 @@ type Flight struct {
 	Timestamp       uint32
 }
 
+type ReserveFlight struct {
+	ID           string
+	FID          int32
+	SeatReserved int32
+}
+
 func (f *Flight) Parse(data []string) error {
 	id, err := strconv.ParseInt(data[0], 10, 64)
 	if err != nil {

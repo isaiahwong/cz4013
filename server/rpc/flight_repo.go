@@ -1,25 +1,18 @@
 package rpc
 
 import (
-	"errors"
-	"fmt"
-	"regexp"
-
 	"github.com/isaiahwong/cz4013/store"
-)
-
-var (
-	ErrFailCast = errors.New("Failed to cast")
 )
 
 type FlightSearch func(q string, f *Flight) bool
 
 type FlightRepo struct {
-	db *store.DB
+	db       *store.DB
+	Relation string
 }
 
 func (r *FlightRepo) GetAll() ([]*Flight, error) {
-	rel, err := r.db.GetRelation("flights")
+	rel, err := r.db.GetRelation(r.Relation)
 	if err != nil {
 		return nil, err
 	}
@@ -33,7 +26,7 @@ func (r *FlightRepo) GetAll() ([]*Flight, error) {
 }
 
 func (r *FlightRepo) FindByID(id int32) (*Flight, error) {
-	rel, err := r.db.GetRelation("flights")
+	rel, err := r.db.GetRelation(r.Relation)
 	if err != nil {
 		return nil, err
 	}
@@ -67,15 +60,12 @@ func (r *FlightRepo) Update(f *Flight) error {
 		return oldFlight.ID == newFlight.ID
 	}
 
-	return r.db.Update("flights", f, predicate)
-}
-
-func (f *FlightRepo) CreateRegexp(s string) *regexp.Regexp {
-	return regexp.MustCompile(fmt.Sprintf(`(?i)\b\w*%v\w*\b`, s))
+	return r.db.Update(r.Relation, f, predicate)
 }
 
 func NewFlightRepo(db *store.DB) *FlightRepo {
 	return &FlightRepo{
-		db: db,
+		db:       db,
+		Relation: "flights",
 	}
 }

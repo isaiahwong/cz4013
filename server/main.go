@@ -27,6 +27,7 @@ import (
 var flights = []*rpc.Flight{}
 var db *store.DB
 var flightRepo *rpc.FlightRepo
+var reservationRepo *rpc.ReservationRepo
 
 func init() {
 	// Load flights from csv
@@ -35,20 +36,28 @@ func init() {
 	}
 	db = store.New()
 	fType := new(rpc.Flight)
-	if err := db.CreateRelation("flights", reflect.TypeOf(fType)); err != nil {
+	rType := new(rpc.ReserveFlight)
+
+	flightRepo = rpc.NewFlightRepo(db)
+	reservationRepo = rpc.NewReservationRepo(db)
+
+	if err := db.CreateRelation(flightRepo.Relation, reflect.TypeOf(fType)); err != nil {
 		panic(err)
 	}
-	if err := db.BulkInsert("flights", flights); err != nil {
+	if err := db.CreateRelation(reservationRepo.Relation, reflect.TypeOf(rType)); err != nil {
+		panic(err)
+	}
+	if err := db.BulkInsert(flightRepo.Relation, flights); err != nil {
 		panic(err)
 	}
 
-	flightRepo = rpc.NewFlightRepo(db)
 }
 
 func main() {
 	s := protocol.New(
 		protocol.WithDeadline(5*time.Second),
 		protocol.WithFlightRepo(flightRepo),
+		protocol.WithReservationRepo(reservationRepo),
 	)
 	s.Serve()
 }

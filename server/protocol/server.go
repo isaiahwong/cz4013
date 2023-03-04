@@ -88,7 +88,7 @@ func (s *Server) handleRequest(stream *Stream) {
 		return buf[:n], nil
 	}
 
-	err := s.rpc.HandleRequest(readable, writable)
+	err := s.rpc.HandleRequest(stream.addr.IP.String(), readable, writable)
 	if err != nil {
 		s.logger.WithError(err).Error("Error handling request")
 		return
@@ -110,7 +110,7 @@ func New(opt ...Option) *Server {
 
 	s.opts = opts
 	s.logger = opts.logger
-	s.rpc = rpc.New(opts.flightRepo, opts.deadline)
+	s.rpc = rpc.New(opts.flightRepo, opts.reservationRepo, opts.deadline)
 
 	return s
 }
