@@ -5,7 +5,7 @@ from message import message, ErrorMsg, Message, Error
 import codec
 import datetime
 from misc import futuretime
-import threading
+from threading import Thread, Event
 
 # Done with addition of error checking
 def rpc_get_flights(IP_ADD: str, PORT: int):
@@ -42,7 +42,7 @@ def rpc_get_flights(IP_ADD: str, PORT: int):
         return
 
 
-def monitorUpdates():
+def monitorUpdates(event: Event) -> None:
     c = Client("127.0.0.1", 8080)
     stream = c.open(None)
 
@@ -54,6 +54,10 @@ def monitorUpdates():
     stream.write(codec.marshal(req))
 
     while True:
+        if event.is_set():
+                print("Thread stopped...")
+                break
+
         try:
             b = stream.read()
             res: Message = codec.unmarshal(b[0], Message())
@@ -71,17 +75,19 @@ def monitorUpdates():
                 flight.seat_availability,
             )
 
+            
+
         except Exception as e:
             print(e)
             pass
 
-        time.sleep(20)  # yield for ctx switch
+        time.sleep(30)  # yield for ctx switch
 
 
 def reserveFlight(IP_ADD: str, PORT: int):
     c = Client(IP_ADD, PORT)
-    flightid = str(input("Enter the plane id you wish to reserve a seat in: "))
-    seats = int(input("Enter the number of seats you wish to reserve: "))
+    flightid = str(input("\nEnter the plane id you wish to reserve a seat in: "))
+    seats = int(input("\nEnter the number of seats you wish to reserve: "))
     stream = c.open(5)
 
     req = Message(rpc="ReserveFlight", query={"id": flightid, "seats": str(seats)})
@@ -137,7 +143,8 @@ def print_menu():
 
 def main(IP_ADD: str, PORT: int):
     exit = False
-    monitoring = threading.Thread(target=monitorUpdates)
+    event = Event()
+    monitoring = Thread(target=monitorUpdates, args=(event,))
     while not exit:
         print_menu()
         option = str(input("Enter your choice: "))
@@ -150,7 +157,7 @@ def main(IP_ADD: str, PORT: int):
         elif option =="4":
             monitoring.start()
         elif option == "5":
-            monitoring.join()
+            event.set()
         elif option == "6":
             print("Stopping monitoring...")
             print("exiting....")
@@ -165,4 +172,5 @@ if __name__ == "__main__":
     # PORT = int(input("Enter the port: "))
     IP_ADD = "127.0.0.1"
     PORT = 8080
+
     main(IP_ADD, PORT)
