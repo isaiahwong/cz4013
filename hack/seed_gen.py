@@ -49,7 +49,7 @@ def generate_flight_data(num_flights: int) -> List[Flight]:
 
 
 def main():
-    flights = generate_flight_data(1000)
+    flights = generate_flight_data(50)
     with open("flights.csv", mode="w", newline="") as csv_file:
         writer = csv.writer(csv_file)
         writer.writerow(

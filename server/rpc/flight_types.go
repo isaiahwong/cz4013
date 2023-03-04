@@ -1,6 +1,9 @@
 package rpc
 
-import "strconv"
+import (
+	"fmt"
+	"strconv"
+)
 
 type Flight struct {
 	ID              int32
@@ -9,13 +12,6 @@ type Flight struct {
 	Airfare         float32
 	SeatAvailablity int32
 	Timestamp       uint32
-}
-
-type ReserveFlight struct {
-	ID           string
-	Flight       *Flight
-	SeatReserved int32
-	CheckIn      bool
 }
 
 func (f *Flight) Parse(data []string) error {
@@ -46,4 +42,20 @@ func (f *Flight) Parse(data []string) error {
 	f.Airfare = float32(airfare)
 	f.SeatAvailablity = int32(seatAvail)
 	return nil
+}
+
+// String returns a string representation of the flight
+func (f *Flight) String() string {
+	return fmt.Sprintf("ID: %v Source: %v Destination: %v Airfare: %v SeatAvailablity: %v Timestamp: %v", f.ID, f.Source, f.Destination, f.Airfare, f.SeatAvailablity, f.Timestamp)
+}
+
+type ReserveFlight struct {
+	ID           string
+	Flight       *Flight
+	SeatReserved int32
+	CheckIn      bool
+}
+
+func (r *ReserveFlight) String() string {
+	return fmt.Sprintf("ID: %v Flight: %v SeatReserved: %v CheckIn: %v", r.ID, r.Flight.ID, r.SeatReserved, r.CheckIn)
 }
