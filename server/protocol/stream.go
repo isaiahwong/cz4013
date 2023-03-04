@@ -2,7 +2,6 @@ package protocol
 
 import (
 	"errors"
-	"fmt"
 	"io"
 	"net"
 	"sync"
@@ -151,7 +150,6 @@ func (s *Stream) waitRead() error {
 		}
 		return io.EOF
 	case <-deadline:
-		fmt.Println("here")
 		return ErrTimeout
 	case <-s.chDie:
 		return io.ErrClosedPipe

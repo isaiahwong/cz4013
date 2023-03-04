@@ -15,6 +15,7 @@ type ReserveFlight struct {
 	ID           string
 	Flight       *Flight
 	SeatReserved int32
+	CheckIn      bool
 }
 
 func (f *Flight) Parse(data []string) error {

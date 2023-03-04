@@ -59,6 +59,8 @@ func (r *RPC) router(m *Message, read Readable, write Writable) error {
 		return r.ReserveFlight(m, read, write)
 	} else if m.RPC == "MonitorUpdates" {
 		return r.MonitorUpdates(m, read, write)
+	} else if m.RPC == "CheckInFlight" {
+		return r.CheckInFlight(m, read, write)
 	} else if m.RPC == "CancelFlight" {
 		return r.CancelFlight(m, read, write)
 	}

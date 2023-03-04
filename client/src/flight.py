@@ -21,10 +21,13 @@ class Flight:
 
 class ReserveFlight:
     def __init__(
-        self, id: str = "", flight: Flight = Flight(), seats_reserved: int = 0
+        self,
+        id: str = "",
+        flight: Flight = Flight(),
+        seats_reserved: int = 0,
+        check_in: bool = False,
     ):
         self.id = id
         self.flight = flight
         self.seats_reserved = seats_reserved
-
-        
+        self.check_in = check_in

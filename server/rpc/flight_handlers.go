@@ -158,6 +158,43 @@ func (r *RPC) ReserveFlight(m *Message, read Readable, write Writable) error {
 	return r.ok(method, b, read, write)
 }
 
+func (r *RPC) CheckInFlight(m *Message, read Readable, write Writable) error {
+	method := "CheckInFlight"
+	r.reserveMux.Lock()
+	r.reserveMux.Unlock()
+
+	id, ok := m.Query["id"]
+	if !ok || id == "" {
+		return r.error(method, ErrInvalidParams, fmt.Sprintf("%v: is invalid", id), read, write)
+	}
+
+	// Retrieve reservation
+	rf, err := r.reservationRepo.FindByID(id)
+	if err != nil {
+		return r.error(method, ErrNoReserveFlightFound, "", read, write)
+	}
+
+	marshal := func(reserve *ReserveFlight) error {
+		b, err := encoding.Marshal(rf)
+		if err != nil {
+			return r.error(method, ErrInternalError, err.Error(), read, write)
+		}
+		return r.ok(method, b, read, write)
+	}
+
+	if rf.CheckIn {
+		return marshal(rf)
+	}
+
+	rf.CheckIn = true
+	if err = r.reservationRepo.Update(rf); err != nil {
+		return r.error(method, ErrInternalError, err.Error(), read, write)
+	}
+	return marshal(rf)
+
+}
+
+// CancelFlight is a Non Idempotent
 func (r *RPC) CancelFlight(m *Message, read Readable, write Writable) error {
 	method := "CancelFlight"
 	r.reserveMux.Lock()
@@ -171,7 +208,10 @@ func (r *RPC) CancelFlight(m *Message, read Readable, write Writable) error {
 	// Retrieve reservation
 	rf, err := r.reservationRepo.FindByID(id)
 	if err != nil {
-		return r.error(method, ErrNoReserveFlightFound, "", read, write)
+		return r.error(method, ErrInternalError, err.Error(), read, write)
+	}
+	if rf == nil {
+		return r.error(method, ErrNoReserveFlightFound, fmt.Sprintf("No reservation found with %v", id), read, write)
 	}
 
 	// Retrieve flight
