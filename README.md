@@ -49,4 +49,6 @@ Client: <br>
 4. The client then presents the results on the console to the user. 
 
 In java, serialization is the synonym of marshalling in Java. Deserialization is the synonym of unmarshalling in Java. <br>
-BUT we cannnot use any existing RMI, RPC, COBRA, Java Object serialization facilities and input/output stream in Java. 
+BUT we cannnot use any existing RMI, RPC, COBRA, Java Object serialization facilities and input/output stream in Java.
+
+

@@ -13,6 +13,8 @@ def rpc_get_flights(IP_ADD: str, PORT: int):
     stream = c.open(deadline=5)
     source = str(input("Enter Origin of Flight: "))
     destination = str(input("Enter Destination of Flight: "))
+   
+
     req = Message(
         rpc="FindFlights",
         query={"source": source, "destination": destination},
@@ -73,7 +75,7 @@ def monitorUpdates():
             print(e)
             pass
 
-        time.sleep(0.1)  # yield for ctx switch
+        time.sleep(20)  # yield for ctx switch
 
 
 def reserveFlight(IP_ADD: str, PORT: int):
@@ -85,7 +87,6 @@ def reserveFlight(IP_ADD: str, PORT: int):
     req = Message(rpc="ReserveFlight", query={"id": flightid, "seats": str(seats)})
     stream.write(codec.marshal(req))
     b = stream.read()
-    print(b)
     res: Message = codec.unmarshal(b[0], Message())
     if res.error:
         res.error.printerror()
@@ -101,12 +102,63 @@ def reserveFlight(IP_ADD: str, PORT: int):
             f.seat_availability,
         )
 
+def cancelFlight(IP_ADD:str, PORT:int):
+    c = Client(IP_ADD, PORT)
+    flightid = str(input("Enter the plane id you wish to cancel a seat in: "))
+    stream = c.open(5)
+
+    req = Message(rpc="CancelFlight", query={"id": flightid})
+    stream.write(codec.marshal(req))
+    b = stream.read()
+    res: Message = codec.unmarshal(b[0], Message())
+    if res.error:
+        res.error.printerror()
+    else:
+        r: ReserveFlight = codec.unmarshal(res.body, ReserveFlight())
+        f = r.flight
+        print(
+            "Flight Details: ",
+            f.id,
+            f.source,
+            f.destination,
+            f.airfare,
+            f.seat_availability,
+        )
+
+def print_menu():
+    print("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
+    print("1: findFlight")
+    print("2: reserveFlight")
+    print("3: cancelFlight")
+    print("4: start monitoring updates")
+    print("5: stop monitoring updates")
+    print("6: exit")
+    print("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
 
 def main(IP_ADD: str, PORT: int):
-    threading.Thread(target=monitorUpdates).start()
-    while True:
-        reserveFlight(IP_ADD, PORT)
-
+    exit = False
+    monitoring = threading.Thread(target=monitorUpdates)
+    while not exit:
+        print_menu()
+        option = str(input("Enter your choice: "))
+        if option == "1":
+            rpc_get_flights(IP_ADD, PORT)
+        elif option =="2":
+            reserveFlight(IP_ADD, PORT)
+        elif option =="3":
+            cancelFlight(IP_ADD, PORT)
+        elif option =="4":
+            monitoring.start()
+        elif option == "5":
+            monitoring.join()
+        elif option == "6":
+            print("Stopping monitoring...")
+            print("exiting....")
+            exit = True
+        else:
+            print("Invalid Option!")
+            continue
+       
 
 if __name__ == "__main__":
     # IP_ADD = str(input("Enter the ip address: "))

@@ -26,3 +26,5 @@ class ReserveFlight:
         self.id = id
         self.flight = flight
         self.seats_reserved = seats_reserved
+
+        
