@@ -20,9 +20,9 @@ type Session struct {
 	conn     *net.UDPConn
 	capacity int
 
+	nextStreamIDLock sync.Mutex
 	// next stream identifier used for clients
-	nextStreamID    uint32
-	nextStreamIDMux sync.Mutex
+	nextStreamID uint32
 
 	chStreamAccept chan *Stream
 	// if session has been closed
@@ -30,7 +30,7 @@ type Session struct {
 	logger *logrus.Logger
 
 	// mutex streams
-	streamMux sync.Mutex
+	streamLock sync.Mutex
 	// mapping of sid to streams.
 	streams  map[string]*Stream
 	chWrites chan writeRequest
@@ -93,11 +93,11 @@ func (s *Session) Close() error {
 	close(s.chDie)
 
 	if once {
-		s.streamMux.Lock()
+		s.streamLock.Lock()
 		for k := range s.streams {
 			s.streams[k].sessionClose()
 		}
-		s.streamMux.Unlock()
+		s.streamLock.Unlock()
 		return s.conn.Close()
 	} else {
 		return io.ErrClosedPipe
@@ -124,11 +124,11 @@ func (s *Session) Open(addr *net.UDPAddr) (*Stream, error) {
 	}
 
 	// generate stream id
-	// s.nextStreamIDMux.Lock()
+	// s.nextStreamIDLock.Lock()
 
 	// s.nextStreamID += 2
 	// sid := s.nextStreamID
-	// s.nextStreamIDMux.Unlock()
+	// s.nextStreamIDLock.Unlock()
 
 	sid := uuid.New()
 
@@ -138,8 +138,8 @@ func (s *Session) Open(addr *net.UDPAddr) (*Stream, error) {
 		return nil, err
 	}
 
-	s.streamMux.Lock()
-	defer s.streamMux.Unlock()
+	s.streamLock.Lock()
+	defer s.streamLock.Unlock()
 	select {
 	case <-s.chDie:
 		return nil, io.ErrClosedPipe
@@ -181,7 +181,7 @@ func (s *Session) recvLoop() {
 		sid := hdr.StreamID()
 		switch hdr.Flag() {
 		case SYN:
-			s.streamMux.Lock()
+			s.streamLock.Lock()
 			// Create new stream
 			if _, ok := s.streams[string(sid)]; !ok {
 				stream := NewStream(s, sid, s.maxFrameSize, addr)
@@ -191,35 +191,35 @@ func (s *Session) recvLoop() {
 				case s.chStreamAccept <- stream:
 				}
 			}
-			s.streamMux.Unlock()
+			s.streamLock.Unlock()
 		case PSH:
 			if hdr.Length() <= 0 {
 				continue
 			}
 			newbuf := make([]byte, int(hdr.Length()))
 			copy(newbuf, b[HeaderSize:HeaderSize+int(hdr.Length())])
-			s.streamMux.Lock()
+			s.streamLock.Lock()
 			if stream, ok := s.streams[string(sid)]; ok {
 				stream.pushBytes(newbuf)
 				// atomic.AddInt32(&s.bucket, -int32(written))
 				stream.notifyReadEvent()
 			}
-			s.streamMux.Unlock()
+			s.streamLock.Unlock()
 
 		case ACK:
-			s.streamMux.Lock()
+			s.streamLock.Lock()
 			if stream, ok := s.streams[string(sid)]; ok {
 				stream.notifyACKEvent()
 			}
-			s.streamMux.Unlock()
+			s.streamLock.Unlock()
 		case FIN:
-			s.streamMux.Lock()
+			s.streamLock.Lock()
 			if stream, ok := s.streams[string(sid)]; ok {
 				stream.fin()
 				// remove blocks to on going read
 				stream.notifyReadEvent()
 			}
-			s.streamMux.Unlock()
+			s.streamLock.Unlock()
 		case NOP:
 		default:
 			s.notifyProtoError(ErrInvalidProtocol)
@@ -230,9 +230,9 @@ func (s *Session) recvLoop() {
 
 // notify the session that a stream has closed
 func (s *Session) streamClosed(sid []byte) {
-	s.streamMux.Lock()
+	s.streamLock.Lock()
 	delete(s.streams, string(sid))
-	s.streamMux.Unlock()
+	s.streamLock.Unlock()
 }
 
 func (s *Session) notifyReadError(err error) {
