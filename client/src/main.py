@@ -30,6 +30,15 @@ def rpc_get_flights(IP_ADD:str, PORT:int):
     for f in flights:
         print(f.id, f.source, f.destination, f.airfare, f.seat_availability)
 
+    reserve = ""
+    while reserve not in ["Y", "N"]:
+        reserve = input("Do you wish to proceed with reserving the flight? (Y/N)")
+
+    if reserve == "Y":
+        reserveFlight(IP_ADD, PORT)
+    else:
+        return 
+
 
 def monitorUpdates():
     c=Client("127.0.0.1",8080)
@@ -51,14 +60,17 @@ def monitorUpdates():
         flight = codec.unmarshal(res.body, Flight())
         print("New Updated flight: ", flight)
 
-#Done 
+
+
+
 def reserveFlight(IP_ADD:str, PORT:int):
     c=Client(IP_ADD,PORT)
     stream=c.open()
-
+    flightid = str(input("Enter the plane id you wish to reserve a seat in: "))
+    seats = int(input("Enter the number of seats you wish to reserve: "))
     req = Message(
         rpc="ReserveFlight",
-        query={"id":"5653","seats":"1"}
+        query={"id":flightid,"seats":str(seats)}
     )
     stream.write(codec.marshal(req))
     b = stream.read()
@@ -70,15 +82,22 @@ def reserveFlight(IP_ADD:str, PORT:int):
         print("Flight Details: ", f.id, f.source, f.destination, f.airfare, f.seat_availability)
 
 
+
+
+
 def main(IP_ADD:str, PORT:int):
     #monitorUpdates()
+
     reserveFlight(IP_ADD, PORT)
 
 
 
+
+
+
 if __name__ == "__main__":
-   # IP_ADD = str(input("Enter the ip address: "))
-    #PORT = int(input("Enter the port: "))
+    # IP_ADD = str(input("Enter the ip address: "))
+    # PORT = int(input("Enter the port: "))
     IP_ADD = "127.0.0.1"
     PORT = 8080
     main(IP_ADD, PORT)
