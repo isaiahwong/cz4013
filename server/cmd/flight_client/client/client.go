@@ -9,6 +9,7 @@ import (
 	"github.com/isaiahwong/cz4013/encoding"
 	"github.com/isaiahwong/cz4013/protocol"
 	"github.com/isaiahwong/cz4013/rpc"
+	"github.com/sirupsen/logrus"
 )
 
 type Client struct {
@@ -16,8 +17,9 @@ type Client struct {
 	conn         *net.UDPConn
 	remoteAddr   *net.UDPAddr
 	session      *protocol.Session
+	logger       *logrus.Logger
 	mtu          int
-	Reservations []*rpc.ReserveFlight
+	Reservations map[string]*rpc.ReserveFlight
 }
 
 func (c *Client) open() (*protocol.Stream, error) {
@@ -54,7 +56,7 @@ func (c *Client) send(stream *protocol.Stream, method string, query map[string]s
 	}
 	n, err := stream.Read(res)
 	if err != nil && err != io.EOF {
-		panic(err)
+		return nil, err
 	}
 	m := new(rpc.Message)
 	if err = encoding.Unmarshal(res[:n], m); err != nil && err != io.EOF {
@@ -96,7 +98,8 @@ func New(opt ...Option) *Client {
 
 	return &Client{
 		opts:         opts,
+		logger:       opts.logger,
 		mtu:          65507,
-		Reservations: []*rpc.ReserveFlight{},
+		Reservations: make(map[string]*rpc.ReserveFlight),
 	}
 }

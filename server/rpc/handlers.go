@@ -61,6 +61,10 @@ func (r *RPC) router(m *Message, read Readable, write Writable) error {
 		return r.MonitorUpdates(m, read, write)
 	} else if m.RPC == "CheckInFlight" {
 		return r.CheckInFlight(m, read, write)
+	} else if m.RPC == "GetMeals" {
+		return r.GetMeals(read, write)
+	} else if m.RPC == "AddMeals" {
+		return r.AddMeals(m, read, write)
 	} else if m.RPC == "CancelFlight" {
 		return r.CancelFlight(m, read, write)
 	}

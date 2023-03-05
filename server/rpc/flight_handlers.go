@@ -16,6 +16,7 @@ var (
 	ErrNoFlightsFound       = errors.New("Flights not found")
 	ErrNoFlightFound        = errors.New("Flight not found")
 	ErrNoReserveFlightFound = errors.New("Reservation not found")
+	ErrMealsNotFound        = errors.New("Meals not found")
 	ErrInvalidParams        = errors.New("Invalid query params")
 	ErrFailToReserve        = errors.New("Failed to reserve")
 	ErrInternalError        = errors.New("Internal Error")
@@ -53,10 +54,6 @@ func (r *RPC) FindFlights(m *Message, read Readable, write Writable) error {
 		if sourceCriteria(src, f) && destCriteria(dest, f) {
 			filteredFlights = append(filteredFlights, f)
 		}
-	}
-
-	for _, f := range filteredFlights {
-		fmt.Println(*f)
 	}
 
 	b, err := encoding.Marshal(filteredFlights)
@@ -192,10 +189,72 @@ func (r *RPC) CheckInFlight(m *Message, read Readable, write Writable) error {
 		return r.error(method, ErrInternalError, err.Error(), read, write)
 	}
 	return marshal(rf)
-
 }
 
-// CancelFlight is a Non Idempotent
+func (r *RPC) GetMeals(read Readable, write Writable) error {
+	method := "GetMeals"
+	meals := GetFood()
+
+	// convert meals to list
+	mealList := []*Food{}
+	for _, meal := range meals {
+		mealList = append(mealList, meal)
+	}
+
+	b, err := encoding.Marshal(mealList)
+	if err != nil {
+		return r.error(method, ErrInternalError, err.Error(), read, write)
+	}
+
+	return r.ok(method, b, read, write)
+}
+
+// AddMeals is non Idempotent
+func (r *RPC) AddMeals(m *Message, read Readable, write Writable) error {
+	method := "AddMeals"
+	r.reserveMux.Lock()
+	r.reserveMux.Unlock()
+
+	id, ok := m.Query["id"]
+	if !ok || id == "" {
+		return r.error(method, ErrInvalidParams, fmt.Sprintf("%v: is invalid", id), read, write)
+	}
+
+	mealIdStr, ok := m.Query["meal_id"]
+	if !ok || id == "" {
+		return r.error(method, ErrInvalidParams, fmt.Sprintf("%v: is invalid", id), read, write)
+	}
+
+	mealId, err := strconv.ParseInt(mealIdStr, 10, 64)
+	if err != nil {
+		return r.error(method, ErrInvalidParams, fmt.Sprintf("%v: is invalid", id), read, write)
+	}
+
+	// Retrieve reservation
+	rf, err := r.reservationRepo.FindByID(id)
+	if rf == nil {
+		return r.error(method, ErrNoReserveFlightFound, fmt.Sprintf("No reservation found with %v", id), read, write)
+	}
+
+	meals := GetFood()
+	meal, ok := meals[int64(mealId)]
+	if !ok {
+		return r.error(method, ErrMealsNotFound, fmt.Sprintf("Meal not found with %v", mealIdStr), read, write)
+	}
+
+	rf.Meals = append(rf.Meals, meal)
+	if err = r.reservationRepo.Update(rf); err != nil {
+		return r.error(method, ErrInternalError, err.Error(), read, write)
+	}
+
+	b, err := encoding.Marshal(rf)
+	if err != nil {
+		return r.error(method, ErrInternalError, err.Error(), read, write)
+	}
+	return r.ok(method, b, read, write)
+}
+
+// CancelFlight is a Idempotent
 func (r *RPC) CancelFlight(m *Message, read Readable, write Writable) error {
 	method := "CancelFlight"
 	r.reserveMux.Lock()
@@ -213,6 +272,10 @@ func (r *RPC) CancelFlight(m *Message, read Readable, write Writable) error {
 	}
 	if rf == nil {
 		return r.error(method, ErrNoReserveFlightFound, fmt.Sprintf("No reservation found with %v", id), read, write)
+	}
+
+	if rf.CheckIn {
+		return r.error(method, ErrNoReserveFlightFound, "Can't cancel. Reservation checked in", read, write)
 	}
 
 	// Retrieve flight

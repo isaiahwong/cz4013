@@ -1,6 +1,7 @@
 package app
 
 import (
+	"bufio"
 	"errors"
 	"fmt"
 	"os"
@@ -8,15 +9,19 @@ import (
 
 	"github.com/isaiahwong/cz4013/cmd/flight_client/client"
 	"github.com/manifoldco/promptui"
+	"github.com/sirupsen/logrus"
 )
 
 var (
-	FindFlights    = "FindFlights"
-	FindFlight     = "FindFlight"
-	ReserveFlight  = "ReserveFlight"
-	CheckInFlight  = "CheckInFlight"
-	CancelFlight   = "CancelFlight"
-	MonitorUpdates = "MonitorUpdates"
+	FindFlights      = "FindFlights"
+	FindFlight       = "FindFlight"
+	ReserveFlight    = "ReserveFlight"
+	CheckInFlight    = "CheckInFlight"
+	CancelFlight     = "CancelFlight"
+	ViewReservations = "ViewReservations"
+	GetMeals         = "GetMeals"
+	AddMeals         = "AddMeals"
+	MonitorUpdates   = "MonitorUpdates"
 )
 
 var validateInt = func(input string) error {
@@ -27,46 +32,41 @@ var validateInt = func(input string) error {
 	return nil
 }
 
-type App struct {
-	c       *client.Client
-	options promptui.Select
+var validateIndex = func(l, r int64) func(input string) error {
+	return func(input string) error {
+		in, err := strconv.ParseInt(input, 10, 64)
+		if err != nil {
+			return errors.New("Invalid input")
+		}
+
+		if in < l || in > r {
+			return errors.New("Selection out of range")
+		}
+		return nil
+	}
+
 }
 
-func (a *App) reserveFlight() {
-	f := promptui.Prompt{
-		Label:    "Enter Flight ID",
-		Validate: validateInt,
-	}
+type App struct {
+	c           *client.Client
+	options     promptui.Select
+	logger      *logrus.Logger
+	keyStrokeCh chan struct{}
+}
 
-	s := promptui.Prompt{
-		Label:    "Enter seats",
-		Validate: validateInt,
-	}
+func (a *App) printTitle(title string) {
+	fmt.Println("========================================")
+	fmt.Println(title)
+	fmt.Println("========================================")
+}
 
-	flightID, err := f.Run()
-	if err != nil {
-		fmt.Println(err)
-		return
+func (a *App) onKeyStoke() {
+	fmt.Println("Press enter to cancel...")
+	reader := bufio.NewReader(os.Stdin)
+	_, _, _ = reader.ReadRune()
+	select {
+	case a.keyStrokeCh <- struct{}{}:
 	}
-
-	seatsStr, err := s.Run()
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
-	seats, _ := strconv.ParseInt(seatsStr, 10, 32)
-
-	reservation, err := a.c.ReserveFlight(flightID, int(seats))
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
-
-	// print reservation
-	fmt.Println("Reservation Details:")
-	fmt.Println(reservation.String())
-	fmt.Println("\nFlight Details:")
-	fmt.Println(reservation.Flight.String())
 }
 
 func (a *App) topLevel() {
@@ -84,12 +84,21 @@ func (a *App) topLevel() {
 
 	switch result {
 	case FindFlights:
+		a.findFlights()
 	case FindFlight:
+		a.findFlight()
 	case ReserveFlight:
 		a.reserveFlight()
 	case CheckInFlight:
+		a.checkInFlight()
 	case CancelFlight:
+		a.cancelFlight()
+	case ViewReservations:
+		a.ViewReservations()
+	case AddMeals:
+		a.AddMeals()
 	case MonitorUpdates:
+		a.monitorUpdates()
 	}
 }
 
@@ -109,13 +118,16 @@ func New(c *client.Client) *App {
 		Items: []string{
 			FindFlights, FindFlight,
 			ReserveFlight, CheckInFlight,
-			CancelFlight, MonitorUpdates,
+			ViewReservations,
+			AddMeals, MonitorUpdates,
 		},
 		Size: 10,
 	}
 
 	return &App{
-		c:       c,
-		options: options,
+		c:           c,
+		options:     options,
+		logger:      logrus.New(),
+		keyStrokeCh: make(chan struct{}, 1),
 	}
 }

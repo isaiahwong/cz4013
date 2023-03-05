@@ -2,7 +2,6 @@ package encoding
 
 import (
 	"errors"
-	"fmt"
 	"reflect"
 )
 
@@ -554,7 +553,6 @@ func (c *slicePtrCodec) Decode(d *Decoder, rv reflect.Value) (err error) {
 	var l uint64
 	var isNil bool
 	if l, err = d.readUint64(); err == nil && l > 0 {
-		fmt.Println(rv.CanSet())
 		rv.Set(reflect.MakeSlice(rv.Type(), int(l), int(l)))
 		for i := 0; i < int(l); i++ {
 
