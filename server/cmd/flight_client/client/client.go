@@ -1,6 +1,7 @@
 package client
 
 import (
+	"errors"
 	"io"
 	"net"
 	"time"
@@ -19,11 +20,16 @@ type Client struct {
 	session      *protocol.Session
 	logger       *logrus.Logger
 	mtu          int
+	retries      int
 	Reservations map[string]*rpc.ReserveFlight
 }
 
 func (c *Client) open() (*protocol.Stream, error) {
 	return c.session.Open(c.remoteAddr)
+}
+
+func (c *Client) openWithSid(sid []byte) (*protocol.Stream, error) {
+	return c.session.OpenWithSid(c.remoteAddr, sid)
 }
 
 // sendOnly -- sends a request only
@@ -43,26 +49,57 @@ func (c *Client) sendOnly(stream *protocol.Stream, method string, query map[stri
 }
 
 // send -- sends a request and waits for a response
-func (c *Client) send(stream *protocol.Stream, method string, query map[string]string, deadline *time.Duration) (*rpc.Message, error) {
-	// Request
-	err := c.sendOnly(stream, method, query, deadline)
+func (c *Client) send(stream *protocol.Stream, method string, query map[string]string, deadline *time.Duration) (*rpc.Message, *protocol.Stream, error) {
+	var err error
+	var m *rpc.Message
+	var n int
+	tries := 0
+
+	for tries <= c.retries {
+		tries++
+		// Log if it's a retry
+		if tries > 1 {
+			stream.Close()
+			c.logger.WithFields(logrus.Fields{
+				"method": method,
+				"query":  query,
+				"tries":  tries,
+			}).Info("Retrying in 1s")
+			time.Sleep(1 * time.Second)
+			stream, err = c.openWithSid([]byte(stream.SID()))
+
+		}
+
+		// Request
+		err = c.sendOnly(stream, method, query, deadline)
+		if err != nil {
+			continue
+		}
+
+		// Response
+		res := make([]byte, c.mtu)
+		if deadline != nil {
+			stream.SetReadDeadline(time.Now().Add(*deadline))
+		}
+		n, err = stream.Read(res)
+		if err != nil && err != io.EOF {
+			continue
+		}
+
+		m = new(rpc.Message)
+		if err = encoding.Unmarshal(res[:n], m); err != nil && err != io.EOF {
+			continue
+		}
+		break
+	}
 	if err != nil {
-		return nil, err
+		return nil, stream, err
 	}
-	// Response
-	res := make([]byte, c.mtu)
-	if deadline != nil {
-		stream.SetReadDeadline(time.Now().Add(*deadline))
+	if m == nil {
+		return nil, stream, errors.New("No response received from server.")
 	}
-	n, err := stream.Read(res)
-	if err != nil && err != io.EOF {
-		return nil, err
-	}
-	m := new(rpc.Message)
-	if err = encoding.Unmarshal(res[:n], m); err != nil && err != io.EOF {
-		return nil, err
-	}
-	return m, err
+
+	return m, stream, nil
 }
 
 func (c *Client) Start() (err error) {
@@ -89,6 +126,7 @@ func New(opt ...Option) *Client {
 		addr:     "localhost:8080",
 		logger:   common.NewLogger(),
 		deadline: time.Second * 5,
+		retries:  0,
 	}
 
 	// Apply options
@@ -100,6 +138,7 @@ func New(opt ...Option) *Client {
 		opts:         opts,
 		logger:       opts.logger,
 		mtu:          65507,
+		retries:      opts.retries,
 		Reservations: make(map[string]*rpc.ReserveFlight),
 	}
 }

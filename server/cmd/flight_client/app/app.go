@@ -2,10 +2,8 @@ package app
 
 import (
 	"bufio"
-	"errors"
 	"fmt"
 	"os"
-	"strconv"
 
 	"github.com/isaiahwong/cz4013/cmd/flight_client/client"
 	"github.com/manifoldco/promptui"
@@ -23,29 +21,6 @@ var (
 	AddMeals         = "AddMeals"
 	MonitorUpdates   = "MonitorUpdates"
 )
-
-var validateInt = func(input string) error {
-	_, err := strconv.ParseInt(input, 10, 64)
-	if err != nil {
-		return errors.New("Invalid input")
-	}
-	return nil
-}
-
-var validateIndex = func(l, r int64) func(input string) error {
-	return func(input string) error {
-		in, err := strconv.ParseInt(input, 10, 64)
-		if err != nil {
-			return errors.New("Invalid input")
-		}
-
-		if in < l || in > r {
-			return errors.New("Selection out of range")
-		}
-		return nil
-	}
-
-}
 
 type App struct {
 	c           *client.Client

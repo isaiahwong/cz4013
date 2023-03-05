@@ -8,6 +8,7 @@ import (
 	"text/tabwriter"
 	"time"
 
+	"github.com/isaiahwong/cz4013/common"
 	"github.com/manifoldco/promptui"
 )
 
@@ -43,8 +44,8 @@ func (a *App) findFlights() {
 		a.printTitle("No flights found")
 		return
 	}
-	a.printTitle("Flights")
 
+	a.printTitle("Flights")
 	w := tabwriter.NewWriter(os.Stdout, 0, 8, 4, ' ', tabwriter.TabIndent)
 	for i, f := range flights {
 		fmt.Println(fmt.Sprintf("\nFlight %v", i+1))
@@ -82,12 +83,12 @@ func (a *App) findFlight() {
 func (a *App) reserveFlight() {
 	f := promptui.Prompt{
 		Label:    "Enter Flight ID",
-		Validate: validateInt,
+		Validate: common.ValidateInt,
 	}
 
 	s := promptui.Prompt{
 		Label:    "Enter seats",
-		Validate: validateInt,
+		Validate: common.ValidateInt,
 	}
 
 	flightID, err := f.Run()
@@ -144,7 +145,7 @@ func (a *App) checkInFlight() {
 
 	rp := promptui.Prompt{
 		Label:    "Select index of reservation cancel",
-		Validate: validateIndex(0, int64(len(a.c.Reservations))),
+		Validate: common.ValidateRange(0, int64(len(a.c.Reservations))),
 	}
 	reserveStr, err := rp.Run()
 	if err != nil {
@@ -202,7 +203,7 @@ func (a *App) AddMeals() {
 
 	rp := promptui.Prompt{
 		Label:    "Select index of reservation to add meal",
-		Validate: validateIndex(0, int64(len(a.c.Reservations))),
+		Validate: common.ValidateRange(0, int64(len(a.c.Reservations))),
 	}
 	reserveStr, err := rp.Run()
 	if err != nil {
@@ -225,7 +226,7 @@ func (a *App) AddMeals() {
 
 	mp := promptui.Prompt{
 		Label:    "Select index of meal to add",
-		Validate: validateIndex(0, int64(len(meals))),
+		Validate: common.ValidateRange(0, int64(len(meals))),
 	}
 	mealStr, err := mp.Run()
 	if err != nil {
@@ -267,7 +268,7 @@ func (a *App) cancelFlight() {
 
 	rp := promptui.Prompt{
 		Label:    "Select index of reservation cancel",
-		Validate: validateIndex(0, int64(len(a.c.Reservations))),
+		Validate: common.ValidateRange(0, int64(len(a.c.Reservations))),
 	}
 	reserveStr, err := rp.Run()
 	if err != nil {

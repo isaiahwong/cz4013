@@ -1,4 +1,4 @@
-package main
+package flight_client
 
 import (
 	"time"
@@ -15,12 +15,13 @@ func init() {
 	c = client.New(
 		client.WithAddr("localhost:8080"),
 		client.WithDeadline(5*time.Second),
+		client.WithRetries(5),
 		client.WithLogger(logrus.New()),
 	)
 	a = app.New(c)
 }
 
-func main() {
+func Start() {
 	if err := a.Start(); err != nil {
 		panic(err)
 	}

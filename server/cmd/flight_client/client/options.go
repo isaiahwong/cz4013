@@ -10,6 +10,7 @@ type options struct {
 	logger   *logrus.Logger
 	deadline time.Duration
 	addr     string
+	retries  int
 }
 
 // Option sets options for Server.
@@ -32,5 +33,11 @@ func WithDeadline(deadline time.Duration) Option {
 func WithLogger(l *logrus.Logger) Option {
 	return func(o *options) {
 		o.logger = l
+	}
+}
+
+func WithRetries(i int) Option {
+	return func(o *options) {
+		o.retries = i
 	}
 }

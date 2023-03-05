@@ -2,6 +2,7 @@ package protocol
 
 import (
 	"fmt"
+	"math/rand"
 	"net"
 	"sync"
 	"time"
@@ -19,6 +20,11 @@ const (
 	AtLeastOnce
 )
 
+type Semantic struct {
+	Name  string
+	Value Semantics
+}
+
 type Server struct {
 	logger *logrus.Logger
 	opts   options
@@ -30,6 +36,9 @@ type Server struct {
 
 	historyLock sync.Mutex
 	history     map[string][]byte
+
+	lossRate int
+	rand     *rand.Rand
 }
 
 // Serve starts the server with blocking call
@@ -60,6 +69,9 @@ func (s *Server) handleSession(sess *Session) {
 	// Start session receive and send loop goroutines
 	sess.Start()
 	s.logger.Info(fmt.Sprintf("Started server on %v", s.addr))
+	s.logger.Info(fmt.Sprintf("Server semantic: %v", s.opts.semantic))
+	s.logger.Info(fmt.Sprintf("Server loss rate: %v", s.opts.lossRate))
+
 	defer sess.Close()
 	for {
 		stream, err := sess.Accept()
@@ -73,8 +85,14 @@ func (s *Server) handleSession(sess *Session) {
 }
 
 // writable - a write middleware
-func (s *Server) writable(stream *Stream) func([]byte) (int, error) {
+func (s *Server) writable(stream *Stream, lossy bool) func([]byte) (int, error) {
 	writable := func(data []byte) (int, error) {
+		// Randomly drop packets
+		if lossy && s.rand.Intn(100) < s.lossRate {
+			s.logger.Info(fmt.Sprintf("Dropped packet from %v", stream.addr))
+			time.Sleep(5 * time.Second)
+			return 0, nil
+		}
 		return stream.Write(data)
 	}
 
@@ -89,7 +107,7 @@ func (s *Server) writable(stream *Stream) func([]byte) (int, error) {
 
 		// Cache results
 		sid := stream.SID()
-		s.history[sid] = data
+		s.history[string(sid)] = data
 		return n, nil
 	}
 
@@ -129,19 +147,20 @@ func (s *Server) handleRequest(stream *Stream) {
 		s.historyLock.Lock()
 		sid := stream.SID()
 		// Check cache
-		buf, ok := s.history[sid]
+		buf, ok := s.history[string(sid)]
 		s.historyLock.Unlock()
 
 		if !ok {
 			return handleRequest(
 				stream.addr.IP.String(),
 				s.readable(stream),
-				s.writable(stream),
+				s.writable(stream, true),
 			)
 		}
 
 		// Return cache
-		_, aErr := s.writable(stream)(buf)
+		s.logger.Info(fmt.Sprintf("Returning cached result for %v", stream.addr))
+		_, aErr := s.writable(stream, false)(buf)
 		return aErr
 	}
 
@@ -153,7 +172,7 @@ func (s *Server) handleRequest(stream *Stream) {
 		err = handleRequest(
 			stream.addr.IP.String(),
 			s.readable(stream),
-			s.writable(stream),
+			s.writable(stream, true),
 		)
 	}
 
@@ -169,6 +188,8 @@ func newAtMostOnce(opts options) *Server {
 	s.logger = opts.logger
 	s.rpc = rpc.New(opts.flightRepo, opts.reservationRepo, opts.deadline)
 	s.history = make(map[string][]byte)
+	s.rand = rand.New(rand.NewSource(time.Now().UnixNano()))
+	s.lossRate = opts.lossRate
 	return s
 }
 
@@ -177,6 +198,8 @@ func newAtLeastOnce(opts options) *Server {
 	s.opts = opts
 	s.logger = opts.logger
 	s.rpc = rpc.New(opts.flightRepo, opts.reservationRepo, opts.deadline)
+	s.rand = rand.New(rand.NewSource(time.Now().UnixNano()))
+	s.lossRate = opts.lossRate
 	return s
 }
 
@@ -191,11 +214,6 @@ func New(opt ...Option) *Server {
 	for _, o := range opt {
 		o(&opts)
 	}
-
-	s := new(Server)
-	s.opts = opts
-	s.logger = opts.logger
-	s.rpc = rpc.New(opts.flightRepo, opts.reservationRepo, opts.deadline)
 
 	switch opts.semantic {
 	case AtMostOnce:

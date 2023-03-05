@@ -118,23 +118,26 @@ func (s *Session) Accept() (*Stream, error) {
 	}
 }
 
+func (s *Session) OpenWithSid(addr *net.UDPAddr, sid []byte) (*Stream, error) {
+	if s.IsClosed() {
+		return nil, io.ErrClosedPipe
+	}
+	stream := NewStream(s, sid, s.maxFrameSize, addr)
+	return s.open(stream)
+}
+
 func (s *Session) Open(addr *net.UDPAddr) (*Stream, error) {
 	if s.IsClosed() {
 		return nil, io.ErrClosedPipe
 	}
 
-	// generate stream id
-	// s.nextStreamIDLock.Lock()
-
-	// s.nextStreamID += 2
-	// sid := s.nextStreamID
-	// s.nextStreamIDLock.Unlock()
-
 	sid := uuid.New()
-
 	stream := NewStream(s, sid[:], s.maxFrameSize, addr)
+	return s.open(stream)
+}
 
-	if _, err := s.writeFrame(NewFrame(SYN, sid[:]), time.After(OpenCloseTimeout)); err != nil {
+func (s *Session) open(stream *Stream) (*Stream, error) {
+	if _, err := s.writeFrame(NewFrame(SYN, stream.sid), time.After(OpenCloseTimeout)); err != nil {
 		return nil, err
 	}
 
@@ -148,7 +151,7 @@ func (s *Session) Open(addr *net.UDPAddr) (*Stream, error) {
 	case <-s.chProtoError:
 		return nil, s.protoError.Load().(error)
 	default:
-		s.streams[string(sid[:])] = stream
+		s.streams[string(stream.sid)] = stream
 		return stream, nil
 	}
 }

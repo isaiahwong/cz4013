@@ -26,7 +26,10 @@ func (c *Client) FindFlights(source string, destination string) ([]*rpc.Flight, 
 		"destination": destination,
 	}
 
-	res, err := c.send(stream, method, req, &c.opts.deadline)
+	res, stream, err := c.send(stream, method, req, &c.opts.deadline)
+	if err != nil {
+		return nil, err
+	}
 	if res.Error != nil {
 		return nil, errors.New(res.Error.Body)
 	}
@@ -51,7 +54,10 @@ func (c *Client) FindFlight(id string) (*rpc.Flight, error) {
 		"id": id,
 	}
 
-	res, err := c.send(stream, method, req, &c.opts.deadline)
+	res, stream, err := c.send(stream, method, req, &c.opts.deadline)
+	if err != nil {
+		return nil, err
+	}
 	if res.Error != nil {
 		return nil, errors.New(res.Error.Body)
 	}
@@ -77,7 +83,10 @@ func (c *Client) ReserveFlight(id string, seats int) (*rpc.ReserveFlight, error)
 		"seats": fmt.Sprint(seats),
 	}
 
-	res, err := c.send(stream, method, req, &c.opts.deadline)
+	res, stream, err := c.send(stream, method, req, &c.opts.deadline)
+	if err != nil {
+		return nil, err
+	}
 	if res.Error != nil {
 		return nil, errors.New(res.Error.Body)
 	}
@@ -102,7 +111,10 @@ func (c *Client) CheckInFlight(id string) (*rpc.ReserveFlight, error) {
 		"id": id,
 	}
 
-	res, err := c.send(stream, method, req, &c.opts.deadline)
+	res, stream, err := c.send(stream, method, req, &c.opts.deadline)
+	if err != nil {
+		return nil, err
+	}
 	if res.Error != nil {
 		return nil, errors.New(res.Error.Body)
 	}
@@ -122,7 +134,10 @@ func (c *Client) GetMeals() ([]*rpc.Food, error) {
 		return nil, err
 	}
 	req := map[string]string{}
-	res, err := c.send(stream, method, req, &c.opts.deadline)
+	res, stream, err := c.send(stream, method, req, &c.opts.deadline)
+	if err != nil {
+		return nil, err
+	}
 	if res.Error != nil {
 		return nil, errors.New(res.Error.Body)
 	}
@@ -145,7 +160,10 @@ func (c *Client) AddMeals(id string, mealId string) (*rpc.ReserveFlight, error) 
 		"id":      id,
 		"meal_id": mealId,
 	}
-	res, err := c.send(stream, method, req, &c.opts.deadline)
+	res, stream, err := c.send(stream, method, req, &c.opts.deadline)
+	if err != nil {
+		return nil, err
+	}
 	if res.Error != nil {
 		return nil, errors.New(res.Error.Body)
 	}
@@ -170,7 +188,10 @@ func (c *Client) CancelFlight(id string) (*rpc.Flight, error) {
 		"id": id,
 	}
 
-	res, err := c.send(stream, method, req, &c.opts.deadline)
+	res, stream, err := c.send(stream, method, req, &c.opts.deadline)
+	if err != nil {
+		return nil, err
+	}
 	if res.Error != nil {
 		return nil, errors.New(res.Error.Body)
 	}

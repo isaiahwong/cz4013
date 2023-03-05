@@ -14,6 +14,7 @@ type options struct {
 	deadline        time.Duration
 	flightRepo      *rpc.FlightRepo
 	reservationRepo *rpc.ReservationRepo
+	lossRate        int
 }
 
 // Option sets options for Server.
@@ -54,5 +55,11 @@ func WithFlightRepo(f *rpc.FlightRepo) Option {
 func WithReservationRepo(r *rpc.ReservationRepo) Option {
 	return func(o *options) {
 		o.reservationRepo = r
+	}
+}
+
+func WithLossRate(rate int) Option {
+	return func(o *options) {
+		o.lossRate = rate
 	}
 }

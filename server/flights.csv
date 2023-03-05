@@ -1,51 +1,51 @@
 ID,Source,Destination,Timestamp,Airfare,Seat Availability
-9652,San Diego,Los Angeles,1681420094,301,73
-1752,San Antonio,San Diego,1679602094,999,19
-6272,Los Angeles,San Jose,1679270894,347,86
-8031,San Jose,Philadelphia,1679249294,329,36
-8812,Philadelphia,Dallas,1681650494,187,93
-4613,Philadelphia,Philadelphia,1680818894,432,51
-8968,San Diego,Houston,1680433694,429,3
-4859,San Antonio,Houston,1681348094,454,26
-6498,Phoenix,San Jose,1681247294,710,84
-9673,Dallas,San Antonio,1679857694,881,73
-8538,Dallas,San Antonio,1681650494,332,35
-1348,San Antonio,Dallas,1681783694,309,22
-3153,San Jose,San Jose,1680268094,946,84
-7897,Houston,San Jose,1682208494,205,28
-9076,Dallas,Philadelphia,1681081694,391,50
-7513,Philadelphia,Philadelphia,1681949294,163,42
-8795,Los Angeles,Chicago,1679980094,189,61
-5071,San Antonio,Dallas,1681618094,144,44
-4944,Philadelphia,Dallas,1682197694,518,8
-4706,Phoenix,San Jose,1679882894,391,53
-5138,Houston,Chicago,1680214094,123,22
-3299,Chicago,New York,1679137694,496,11
-2813,Los Angeles,San Jose,1678475294,704,96
-6057,Houston,San Diego,1681816094,981,50
-5468,San Antonio,Chicago,1678482494,718,17
-3762,New York,Philadelphia,1681574894,154,67
-9255,Houston,San Jose,1681420094,664,7
-1628,Los Angeles,San Diego,1678741694,786,14
-5508,Phoenix,San Diego,1680390494,807,81
-8591,Phoenix,Phoenix,1678090094,431,27
-6007,Philadelphia,Dallas,1678507694,648,23
-9179,Dallas,Los Angeles,1679332094,958,63
-3493,Chicago,San Antonio,1679897294,528,96
-7469,New York,New York,1679746094,145,95
-6242,San Jose,New York,1679166494,390,91
-1444,Phoenix,San Diego,1679123294,871,65
-8441,Los Angeles,New York,1678824494,604,62
-4760,San Diego,San Antonio,1680527294,601,56
-8641,Houston,San Jose,1678457294,177,94
-4885,Phoenix,Chicago,1679872094,520,6
-4618,Houston,Dallas,1681142894,628,15
-7560,Chicago,Philadelphia,1680487694,991,12
-5359,Phoenix,Dallas,1679314094,383,45
-6814,Los Angeles,San Antonio,1678669694,888,100
-5175,Los Angeles,San Antonio,1679425694,229,23
-1562,Chicago,Phoenix,1679749694,653,68
-2664,San Jose,Philadelphia,1680678494,165,41
-7920,Los Angeles,Chicago,1678457294,551,82
-4896,Phoenix,San Antonio,1680739694,347,88
-9739,Chicago,New York,1680142094,925,5
+2032,San Antonio,Phoenix,1680570741,507,22
+8978,New York,Dallas,1680538341,697,36
+7926,Philadelphia,Philadelphia,1681056741,401,24
+6251,San Jose,San Jose,1678212741,908,29
+3922,New York,Phoenix,1681747941,518,19
+8873,San Jose,Los Angeles,1680250341,750,88
+8961,Houston,Philadelphia,1682194341,836,62
+9973,Philadelphia,Los Angeles,1679461941,863,11
+1687,San Antonio,Chicago,1678457541,992,89
+2975,Houston,San Jose,1679587941,903,70
+3670,San Diego,Dallas,1681402341,296,7
+4552,New York,Los Angeles,1680862341,706,96
+5597,San Antonio,Houston,1679195541,119,66
+1503,San Antonio,Chicago,1678716741,725,5
+5479,Philadelphia,Los Angeles,1681517541,227,54
+2834,Los Angeles,Houston,1680059541,519,59
+3912,Phoenix,San Antonio,1679433141,599,91
+7729,San Diego,New York,1678659141,159,27
+7722,San Diego,New York,1680901941,223,47
+7054,Philadelphia,San Diego,1680041541,576,24
+6944,Chicago,Houston,1679231541,109,36
+9357,Houston,Los Angeles,1680336741,916,59
+1632,New York,Dallas,1679836341,815,5
+7623,Philadelphia,New York,1679850741,940,41
+4718,Philadelphia,Philadelphia,1679526741,157,10
+6359,San Diego,San Antonio,1679976741,789,9
+4164,San Jose,San Jose,1680729141,660,43
+3674,Philadelphia,Houston,1679987541,642,33
+6615,San Diego,Philadelphia,1680981141,733,84
+7684,Houston,Houston,1679919141,179,59
+5236,New York,Dallas,1678299141,825,95
+6469,Chicago,Los Angeles,1681229541,600,32
+2211,Philadelphia,Phoenix,1681301541,457,82
+2883,San Antonio,Phoenix,1679980341,640,57
+7540,San Diego,Los Angeles,1680664341,499,30
+6409,San Antonio,Houston,1681143141,638,14
+3975,Philadelphia,Phoenix,1680729141,138,39
+2920,Chicago,San Jose,1680210741,816,14
+1036,Dallas,San Jose,1679109141,656,48
+3481,New York,Chicago,1680649941,831,23
+9296,San Antonio,Los Angeles,1680196341,234,94
+8671,Houston,New York,1679274741,398,50
+6615,Philadelphia,Phoenix,1682349141,882,6
+9050,San Diego,San Antonio,1678259541,665,34
+1121,Phoenix,San Antonio,1681110741,843,75
+1537,Los Angeles,New York,1679836341,509,72
+9307,Phoenix,Houston,1680775941,354,97
+9557,Houston,Los Angeles,1681416741,582,51
+8789,Chicago,Los Angeles,1680030741,185,48
+3063,Philadelphia,Philadelphia,1680505941,535,74
