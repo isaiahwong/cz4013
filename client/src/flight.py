@@ -19,6 +19,16 @@ class Flight:
         self.timestamp = timestamp
 
 
+class Food:
+    def __init__(
+        self,
+        id: int = 0,
+        name: str = "",
+    ):
+        self.id = id
+        self.name = name
+
+
 class ReserveFlight:
     def __init__(
         self,
@@ -26,8 +36,10 @@ class ReserveFlight:
         flight: Flight = Flight(),
         seats_reserved: int = 0,
         check_in: bool = False,
+        meals: list = [Food()],
     ):
         self.id = id
         self.flight = flight
         self.seats_reserved = seats_reserved
         self.check_in = check_in
+        self.meals = meals

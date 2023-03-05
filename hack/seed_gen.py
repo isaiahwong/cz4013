@@ -1,6 +1,7 @@
 import random
 import csv
 from typing import List
+from datetime import datetime, timedelta
 
 
 class Flight:
@@ -35,13 +36,16 @@ def generate_flight_data(num_flights: int) -> List[Flight]:
         "San Jose",
     ]
     flights = []
+    now = datetime.now()
     for i in range(num_flights):
         flight = Flight(
             ID=random.randint(1000, 9999),
             source=random.choice(cities),
             destination=random.choice(cities),
-            timestamp=random.randint(0, 2**32 - 1),
-            airfare=random.uniform(100.0, 1000.0),
+            timestamp=int(
+                (now + timedelta(hours=random.randint(24, 24 * 50))).timestamp()
+            ),
+            airfare=int(random.uniform(100.0, 1000.0)),
             seat_availability=random.randint(0, 100),
         )
         flights.append(flight)
@@ -49,7 +53,7 @@ def generate_flight_data(num_flights: int) -> List[Flight]:
 
 
 def main():
-    flights = generate_flight_data(1000)
+    flights = generate_flight_data(50)
     with open("flights.csv", mode="w", newline="") as csv_file:
         writer = csv.writer(csv_file)
         writer.writerow(
