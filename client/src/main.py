@@ -42,19 +42,20 @@ def rpc_get_flights(IP_ADD: str, PORT: int):
         return
 
 
-def monitorUpdates(IP_ADD: str, PORT: int, event: Event) -> None:
+def monitorUpdates(IP_ADD: str, PORT: int, duration: int):
         c = Client(IP_ADD, PORT)
         stream = c.open(None)
-
+    
         req = Message(
             rpc="MonitorUpdates",
-            query={"timestamp": str(int(futuretime(1 * 60 * 60) * 1000))},
+            query={"timestamp": str(int(futuretime(duration * 60 * 60) * 1000))},
         )
 
         stream.write(codec.marshal(req))
 
+        
+
         while True:
-            event.wait()
             try:
                 b = stream.read()
                 res: Message = codec.unmarshal(b[0], Message())
@@ -156,34 +157,61 @@ def print_menu():
 
 def main(IP_ADD: str, PORT: int):
     exit = False
-    event = Event()
-    monitoring = Process(target=monitorUpdates, args=(IP_ADD, PORT, event,))
-    monitoring.start()
-    event.clear()
+    process_flag = False
     reserved = []
+    monitoring = Process(target=monitorUpdates, args=(IP_ADD, PORT,1))
     while not exit:
-        print_menu()
-        option = str(input("Enter your choice: "))
-        if option == "1":
-            rpc_get_flights(IP_ADD, PORT)
-        elif option == "2":
-            reserveFlight(IP_ADD, PORT, reserved)
-        elif option == "3":
-            cancelFlight(IP_ADD, PORT, reserved)
-        elif option == "4":
-            event.set()
-        elif option == "5":
-            event.clear()
-        elif option == "6":
-            print("Stopping monitoring...")
-            print("exiting....")
-            exit = True
-            monitoring.terminate()
+        try:
+            print_menu()
+            option = str(input("Enter your choice: "))
+            if option == "1":
+                rpc_get_flights(IP_ADD, PORT)
+            elif option == "2":
+                reserveFlight(IP_ADD, PORT, reserved)
+            elif option == "3":
+                cancelFlight(IP_ADD, PORT, reserved)
+            elif option == "4":
+                count = 0 
+                duration = -1
+                while count<3:
+                    user_input = input("For how long will you want to monitor updates? (in hours and maximum 24 hours).")
+                    duration = int(user_input)
+                    if duration>0 and duration<24:
+                        break
+                    count += 1
+                
+                if count>=3:
+                    print("You have exceeded the number of tries to set the duration!. Default being set to one hour!")
+                    duration = 1
+                
+                if monitoring.is_alive():
+                    print("terminating previous monitoring request...")
+                    monitoring.terminate()
+                    print("Creating new monitoring request....")
+                    monitoring = Process(target=monitorUpdates, args=(IP_ADD, PORT,duration))
+                    monitoring.start()
+                elif process_flag:
+                    print("Creating new monitoring request....")
+                    monitoring = Process(target=monitorUpdates, args=(IP_ADD, PORT,duration))
+                    monitoring.start()
+                else:
+                    print("Your first monitoring request....")
+                    monitoring.start()
+                process_flag = False
+            elif option == "5":
+                monitoring.terminate()
+                process_flag = True
+            elif option == "6":
+                print("Stopping monitoring...")
+                print("exiting....")
+                exit = True
+                monitoring.terminate()
+                break
+            else:
+                print("Invalid Option!")
+                continue
+        except KeyboardInterrupt():
             break
-        else:
-            print("Invalid Option!")
-            continue
-
 
 if __name__ == "__main__":
     # IP_ADD = str(input("Enter the ip address: "))
