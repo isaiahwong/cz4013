@@ -5,7 +5,8 @@ from message import message, ErrorMsg, Message, Error
 import codec
 import datetime
 from misc import futuretime
-from threading import Thread, Event
+# from threading import Thread, Event
+from multiprocessing import Process, Event
 
 # Done with addition of error checking
 def rpc_get_flights(IP_ADD: str, PORT: int):
@@ -42,42 +43,41 @@ def rpc_get_flights(IP_ADD: str, PORT: int):
 
 
 def monitorUpdates(IP_ADD: str, PORT: int, event: Event) -> None:
-    c = Client(IP_ADD, PORT)
-    stream = c.open(None)
+        c = Client(IP_ADD, PORT)
+        stream = c.open(None)
 
-    req = Message(
-        rpc="MonitorUpdates",
-        query={"timestamp": str(int(futuretime(1 * 60 * 60) * 1000))},
-    )
+        req = Message(
+            rpc="MonitorUpdates",
+            query={"timestamp": str(int(futuretime(1 * 60 * 60) * 1000))},
+        )
 
-    stream.write(codec.marshal(req))
+        stream.write(codec.marshal(req))
 
-    while True:
-        event.wait()
-        try:
-            b = stream.read()
-            res: Message = codec.unmarshal(b[0], Message())
-            if res.error:
-                res.error.printerror()
-                return
+        while True:
+            event.wait()
+            try:
+                b = stream.read()
+                res: Message = codec.unmarshal(b[0], Message())
+                if res.error:
+                    res.error.printerror()
+                    return
 
-            flight: Flight() = codec.unmarshal(res.body, Flight())
-            print(
-                "New Updated flight: \n",
-                flight.id,
-                flight.source,
-                flight.destination,
-                flight.airfare,
-                flight.seat_availability,
-            )
+                flight: Flight() = codec.unmarshal(res.body, Flight())
+                print(
+                    "New Updated flight: \n",
+                    flight.id,
+                    flight.source,
+                    flight.destination,
+                    flight.airfare,
+                    flight.seat_availability,
+                )
 
-        except Exception as e:
-            print(e)
-            pass
+            except Exception as e:
+                print(e)
+                pass
 
-        time.sleep(1)  # yield for ctx switch
-
-    return
+            time.sleep(1)  # yield for ctx switch
+        return
 
 
 def reserveFlight(IP_ADD: str, PORT: int, reserved:list):
@@ -157,7 +157,7 @@ def print_menu():
 def main(IP_ADD: str, PORT: int):
     exit = False
     event = Event()
-    monitoring = Thread(target=monitorUpdates, args=(IP_ADD, PORT, event,))
+    monitoring = Process(target=monitorUpdates, args=(IP_ADD, PORT, event,))
     monitoring.start()
     event.clear()
     reserved = []
@@ -178,8 +178,7 @@ def main(IP_ADD: str, PORT: int):
             print("Stopping monitoring...")
             print("exiting....")
             exit = True
-            print("tesstt")
-            monitoring.join()
+            monitoring.terminate()
             break
         else:
             print("Invalid Option!")
