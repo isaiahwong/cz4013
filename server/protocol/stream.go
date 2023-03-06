@@ -2,6 +2,7 @@ package protocol
 
 import (
 	"errors"
+	"fmt"
 	"io"
 	"net"
 	"sync"
@@ -10,6 +11,8 @@ import (
 )
 
 type Stream struct {
+	rid uint32
+
 	sid []byte
 
 	session *Session
@@ -40,9 +43,10 @@ var (
 	ErrMayBlock        = errors.New("op may block on IO")
 )
 
-func NewStream(sess *Session, sid []byte, frameSize int, addr *net.UDPAddr) *Stream {
+func NewStream(sess *Session, sid []byte, rid uint32, frameSize int, addr *net.UDPAddr) *Stream {
 	s := new(Stream)
 	s.sid = sid
+	s.rid = rid
 	s.frameSize = frameSize - HeaderSize
 	s.session = sess
 	s.addr = addr
@@ -70,7 +74,7 @@ func (s *Stream) SetWriteDeadline(t time.Time) error {
 func (s *Stream) Close() error {
 	close(s.chDie)
 
-	_, err := s.session.writeFrame(NewFrame(FIN, s.sid), time.After(OpenCloseTimeout))
+	_, err := s.session.writeFrame(NewFrame(FIN, s.sid, s.rid), time.After(OpenCloseTimeout))
 	s.session.streamClosed(s.sid)
 	if err != nil {
 		return err
@@ -107,6 +111,16 @@ func (s *Stream) Read(b []byte) (int, error) {
 // SID returns a string representation of byte[] sid
 func (s *Stream) SID() []byte {
 	return s.sid
+}
+
+func (s *Stream) RID() uint32 {
+	return s.rid
+}
+
+// SIDRID returns the concatenation of sid rid
+// Used to identify a unique stream
+func (s *Stream) SIDRID() string {
+	return fmt.Sprintf("%v%v", s.sid, s.rid)
 }
 
 func (s *Stream) read(b []byte, offset int) (n int) {
@@ -205,7 +219,7 @@ func (s *Stream) Write(b []byte) (n int, err error) {
 
 	// frame split and transmit
 	sent := 0
-	frame := NewFrame(PSH, s.sid)
+	frame := NewFrame(PSH, s.sid, s.rid)
 	bts := b
 	for len(bts) > 0 {
 		size := len(bts)
@@ -222,7 +236,7 @@ func (s *Stream) Write(b []byte) (n int, err error) {
 			return sent, err
 		}
 	}
-	n, err = s.session.writeFrame(NewFrame(ACK, s.sid), time.After(OpenCloseTimeout))
+	n, err = s.session.writeFrame(NewFrame(ACK, s.sid, s.rid), time.After(OpenCloseTimeout))
 	sent += n
 	// Finish write with ACK
 	if err != nil {

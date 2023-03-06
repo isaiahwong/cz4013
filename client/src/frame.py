@@ -23,18 +23,20 @@ class Frame:
 
     flags = set(item for item in Flag)  # creates a set of all the flags
 
-    def __init__(self, flag: Flag, sid: bytes, data=bytearray()):
+    def __init__(self, flag: Flag, sid: bytes, rid: int, data=bytearray()):
         if flag not in Frame.flags:
             raise ValueError("Invalid flag")
 
         self.flag = flag.value.to_bytes(1, byteorder="little")
         self.sid = sid
+        self.rid = rid
         self.data = data
 
         self.buffer = bytearray(self.flag)  # Encode flag
         self.buffer.extend(
             len(self.data).to_bytes(2, byteorder="little")
         )  # Encode length of data
+        self.buffer.extend(self.rid.to_bytes(4, byteorder="little"))  # Encode rid
         self.buffer.extend(self.sid)
         self.buffer.extend(self.data)
         # [flag  len(data) sid  data]
@@ -44,8 +46,9 @@ class Header:
 
     size_of_flag = 1
     size_of_length = 2
+    size_of_rid = 4
     size_of_sid = 16
-    header_size = size_of_flag + size_of_length + size_of_sid
+    header_size = size_of_flag + size_of_length + size_of_rid + size_of_sid
 
     def __init__(self, buffer: bytearray):
         self.buf = buffer[: Header.header_size]
@@ -59,7 +62,12 @@ class Header:
         # < means little-endian H means unsigned short
         return struct.unpack("<H", self.buf[1 : 1 + 2])[0]
 
+    def requestId(self):
+        # 4 bytes
+        # < means little-endian I means unsigned int32
+        return struct.unpack("<I", self.buf[3 : 3 + 4])[0]
+
     def streamId(self) -> bytes:
         # 4 bytes
         # < means little-endian I means unsigned int32
-        return self.buf[3 : 3 + 16]
+        return self.buf[7 : 7 + 16]

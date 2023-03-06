@@ -2,6 +2,7 @@ package protocol
 
 import (
 	"errors"
+	"fmt"
 	"io"
 	"net"
 	"sync"
@@ -16,6 +17,8 @@ const OpenCloseTimeout = 30 * time.Second // stream open/close timeout
 
 type Session struct {
 	client bool
+
+	requestID uint32 // write request monotonic increasing
 
 	conn     *net.UDPConn
 	capacity int
@@ -37,8 +40,6 @@ type Session struct {
 
 	maxFrameSize int
 
-	requestID uint32 // write request monotonic increasing
-
 	// Socket errors
 	chSocketReadError    chan struct{}
 	chSocketWriteError   chan struct{}
@@ -55,7 +56,6 @@ type Session struct {
 
 type writeRequest struct {
 	frame  Frame
-	seq    uint32
 	result chan writeResult
 }
 
@@ -118,11 +118,11 @@ func (s *Session) Accept() (*Stream, error) {
 	}
 }
 
-func (s *Session) OpenWithSid(addr *net.UDPAddr, sid []byte) (*Stream, error) {
+func (s *Session) OpenWithExisting(addr *net.UDPAddr, old *Stream) (*Stream, error) {
 	if s.IsClosed() {
 		return nil, io.ErrClosedPipe
 	}
-	stream := NewStream(s, sid, s.maxFrameSize, addr)
+	stream := NewStream(s, old.sid, s.requestID, s.maxFrameSize, addr)
 	return s.open(stream)
 }
 
@@ -132,12 +132,12 @@ func (s *Session) Open(addr *net.UDPAddr) (*Stream, error) {
 	}
 
 	sid := uuid.New()
-	stream := NewStream(s, sid[:], s.maxFrameSize, addr)
+	stream := NewStream(s, sid[:], s.requestID, s.maxFrameSize, addr)
 	return s.open(stream)
 }
 
 func (s *Session) open(stream *Stream) (*Stream, error) {
-	if _, err := s.writeFrame(NewFrame(SYN, stream.sid), time.After(OpenCloseTimeout)); err != nil {
+	if _, err := s.writeFrame(NewFrame(SYN, stream.sid, stream.rid), time.After(OpenCloseTimeout)); err != nil {
 		return nil, err
 	}
 
@@ -152,6 +152,7 @@ func (s *Session) open(stream *Stream) (*Stream, error) {
 		return nil, s.protoError.Load().(error)
 	default:
 		s.streams[string(stream.sid)] = stream
+		atomic.AddUint32(&s.requestID, 1)
 		return stream, nil
 	}
 }
@@ -174,21 +175,24 @@ func (s *Session) recvLoop() {
 		b := make([]byte, 1024)
 		// Read header
 		_, addr, err = s.conn.ReadFromUDP(b)
-		copy(hdr[:], b[:HeaderSize])
-
 		if err != nil {
 			s.notifyReadError(err)
 			return
 		}
 
+		copy(hdr[:], b[:HeaderSize])
 		sid := hdr.StreamID()
+		rid := hdr.RequestID()
+
+		sidRid := fmt.Sprintf("%v%v", sid, rid)
+
 		switch hdr.Flag() {
 		case SYN:
 			s.streamLock.Lock()
 			// Create new stream
-			if _, ok := s.streams[string(sid)]; !ok {
-				stream := NewStream(s, sid, s.maxFrameSize, addr)
-				s.streams[string(sid)] = stream
+			if _, ok := s.streams[sidRid]; !ok {
+				stream := NewStream(s, sid, rid, s.maxFrameSize, addr)
+				s.streams[sidRid] = stream
 				select {
 				case <-s.chDie:
 				case s.chStreamAccept <- stream:
@@ -199,10 +203,10 @@ func (s *Session) recvLoop() {
 			if hdr.Length() <= 0 {
 				continue
 			}
-			newbuf := make([]byte, int(hdr.Length()))
-			copy(newbuf, b[HeaderSize:HeaderSize+int(hdr.Length())])
 			s.streamLock.Lock()
-			if stream, ok := s.streams[string(sid)]; ok {
+			if stream, ok := s.streams[sidRid]; ok {
+				newbuf := make([]byte, int(hdr.Length()))
+				copy(newbuf, b[HeaderSize:HeaderSize+int(hdr.Length())])
 				stream.pushBytes(newbuf)
 				// atomic.AddInt32(&s.bucket, -int32(written))
 				stream.notifyReadEvent()
@@ -211,13 +215,13 @@ func (s *Session) recvLoop() {
 
 		case ACK:
 			s.streamLock.Lock()
-			if stream, ok := s.streams[string(sid)]; ok {
+			if stream, ok := s.streams[sidRid]; ok {
 				stream.notifyACKEvent()
 			}
 			s.streamLock.Unlock()
 		case FIN:
 			s.streamLock.Lock()
-			if stream, ok := s.streams[string(sid)]; ok {
+			if stream, ok := s.streams[sidRid]; ok {
 				stream.fin()
 				// remove blocks to on going read
 				stream.notifyReadEvent()
@@ -280,7 +284,7 @@ func (s *Session) sendLoop() {
 				s.conn.Write(buf[:HeaderSize+len(request.frame.Data)])
 			} else {
 				// Retrieve the stream
-				stream, ok := s.streams[string(request.frame.Sid)]
+				stream, ok := s.streams[fmt.Sprintf("%v%v", request.frame.Sid, request.frame.Rid)]
 				if ok {
 					s.conn.WriteToUDP(buf[:HeaderSize+len(request.frame.Data)], stream.addr)
 				} else {
@@ -314,7 +318,6 @@ func (s *Session) sendLoop() {
 func (s *Session) writeFrame(f Frame, deadline <-chan time.Time) (n int, err error) {
 	req := writeRequest{
 		frame:  f,
-		seq:    atomic.AddUint32(&s.requestID, 1),
 		result: make(chan writeResult, 1),
 	}
 

@@ -6,14 +6,15 @@ import uuid
 
 
 class Stream:
-    def __init__(self, sess, sid, maxFrameSize, deadline):
+    def __init__(self, sess, sid, rid, maxFrameSize, deadline):
         self.session = sess  # the session
         self.sid = sid  # session id
+        self.rid = rid  # request id
         self.maxFrameSize = maxFrameSize  # max frame size in the session
         self.deadline = deadline
 
     def write(self, data=bytearray()):
-        frame = Frame(Flag.PSH, self.sid, data)  # create the frame
+        frame = Frame(Flag.PSH, self.sid, self.rid, data)  # create the frame
         bts = data
         while len(bts) > 0:
             size = len(bts)
@@ -22,7 +23,7 @@ class Stream:
             frame.Data = bts[:size]
             bts = bts[size:]
             self.session.writeFrame(frame=frame)
-        self.session.writeFrame(frame=Frame(Flag.ACK, self.sid))
+        self.session.writeFrame(frame=Frame(Flag.ACK, self.sid, self.rid))
 
     def read(self):
         if not self.deadline:
@@ -80,7 +81,7 @@ class Stream:
             return
 
     def close(self):
-        self.session.writeFrame(frame=Frame(Flag.FIN, self.sid))
+        self.session.writeFrame(frame=Frame(Flag.FIN, self.sid, self.rid))
 
 
 class Session:
@@ -88,13 +89,17 @@ class Session:
         self.sock = sock
         self.target = target
         self.streams = {}
+        self.requestId = 0
 
     def open(self, deadline: int):
         sid = uuid.uuid4().bytes[:16]
         # calling the writeframe function to send synchronization
-        self.writeFrame(frame=Frame(Flag.SYN, bytes(sid)))
-        stream = Stream(self, bytes(sid), 1024 - Header.header_size, deadline)
-        self.streams[str(sid)] = stream
+        self.writeFrame(frame=Frame(Flag.SYN, bytes(sid), self.requestId))
+        stream = Stream(
+            self, bytes(sid), self.requestId, 1024 - Header.header_size, deadline
+        )
+        self.streams[f"{str(sid)}{self.requestId}"] = stream
+        self.requestId += 1
         return stream
 
     def writeFrame(self, frame: Frame, deadline: int = 0):

@@ -16,27 +16,37 @@ const (
 // Frame used to encapsulate data in UDP.
 type Frame struct {
 	Flag byte
-	Sid  []byte
+	Rid  uint32 // Request id used for repeated requests
+	Sid  []byte // Stream Id
 	Data []byte
 }
 
 func (f Frame) Header() header {
 	h := header{}
+	// Flag
 	h[0] = f.Flag
+
+	// Length
 	binary.LittleEndian.PutUint16(h[1:], uint16(len(f.Data)))
-	copy(h[3:], f.Sid)
+
+	// Request id
+	binary.LittleEndian.PutUint32(h[3:], f.Rid)
+
+	// Stream id
+	copy(h[7:], f.Sid)
 	return h
 }
 
-func NewFrame(flag byte, sid []byte) Frame {
-	return Frame{Flag: flag, Sid: sid}
+func NewFrame(flag byte, sid []byte, rid uint32) Frame {
+	return Frame{Flag: flag, Sid: sid, Rid: rid}
 }
 
 const (
 	sizeOfFlag   = 1
 	sizeOfLength = 2
+	sizeOfRid    = 4
 	sizeOfSid    = 16
-	HeaderSize   = sizeOfFlag + sizeOfSid + sizeOfLength
+	HeaderSize   = sizeOfFlag + sizeOfSid + sizeOfRid + sizeOfLength
 )
 
 type header [HeaderSize]byte
@@ -49,6 +59,10 @@ func (h header) Length() uint16 {
 	return binary.LittleEndian.Uint16(h[1:])
 }
 
+func (h header) RequestID() uint32 {
+	return binary.LittleEndian.Uint32(h[3 : 3+4])
+}
+
 func (h header) StreamID() []byte {
-	return h[3 : 3+16]
+	return h[7 : 7+16]
 }

@@ -28,8 +28,8 @@ func (c *Client) open() (*protocol.Stream, error) {
 	return c.session.Open(c.remoteAddr)
 }
 
-func (c *Client) openWithSid(sid []byte) (*protocol.Stream, error) {
-	return c.session.OpenWithSid(c.remoteAddr, sid)
+func (c *Client) openWithExisting(stream *protocol.Stream) (*protocol.Stream, error) {
+	return c.session.OpenWithExisting(c.remoteAddr, stream)
 }
 
 // sendOnly -- sends a request only
@@ -66,8 +66,7 @@ func (c *Client) send(stream *protocol.Stream, method string, query map[string]s
 				"tries":  tries,
 			}).Info("Retrying in 1s")
 			time.Sleep(1 * time.Second)
-			stream, err = c.openWithSid([]byte(stream.SID()))
-
+			stream, err = c.openWithExisting(stream)
 		}
 
 		// Request

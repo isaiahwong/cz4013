@@ -85,8 +85,8 @@ func (s *Server) handleSession(sess *Session) {
 }
 
 // writable - a write middleware
-func (s *Server) writable(stream *Stream, lossy bool) func([]byte) (int, error) {
-	writable := func(data []byte) (int, error) {
+func (s *Server) writable(stream *Stream) func([]byte, bool) (int, error) {
+	writable := func(data []byte, lossy bool) (int, error) {
 		// Randomly drop packets
 		if lossy && s.rand.Intn(100) < s.lossRate {
 			s.logger.Info(fmt.Sprintf("Dropped packet from %v", stream.addr))
@@ -96,11 +96,11 @@ func (s *Server) writable(stream *Stream, lossy bool) func([]byte) (int, error) 
 		return stream.Write(data)
 	}
 
-	atMostOnce := func(data []byte) (int, error) {
+	atMostOnce := func(data []byte, lossy bool) (int, error) {
 		s.historyLock.Lock()
 		defer s.historyLock.Unlock()
 
-		n, err := writable(data)
+		n, err := writable(data, lossy)
 		if err != nil {
 			return n, err
 		}
@@ -154,13 +154,13 @@ func (s *Server) handleRequest(stream *Stream) {
 			return handleRequest(
 				stream.addr.IP.String(),
 				s.readable(stream),
-				s.writable(stream, true),
+				s.writable(stream),
 			)
 		}
 
 		// Return cache
 		s.logger.Info(fmt.Sprintf("Returning cached result for %v", stream.addr))
-		_, aErr := s.writable(stream, false)(buf)
+		_, aErr := s.writable(stream)(buf, false)
 		return aErr
 	}
 
@@ -172,7 +172,7 @@ func (s *Server) handleRequest(stream *Stream) {
 		err = handleRequest(
 			stream.addr.IP.String(),
 			s.readable(stream),
-			s.writable(stream, true),
+			s.writable(stream),
 		)
 	}
 
