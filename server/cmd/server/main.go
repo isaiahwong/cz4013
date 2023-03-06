@@ -53,9 +53,9 @@ func handleInterrupt(err error) error {
 func prompt() *protocol.Server {
 	loadDefault := "Load default config"
 	customConfig := "Custom config"
-	semantics := []*protocol.Semantic{
-		{Name: "AtLeastOnce", Value: protocol.AtLeastOnce},
-		{Name: "AtMostOnce", Value: protocol.AtMostOnce},
+	semantics := []protocol.Semantics{
+		protocol.AtLeastOnce,
+		protocol.AtMostOnce,
 	}
 
 	sp := promptui.Select{
@@ -83,10 +83,7 @@ func prompt() *protocol.Server {
 	// Custom config
 	semP := promptui.Select{
 		Label: "Select semantics",
-		Items: []*protocol.Semantic{
-			{Name: "AtLeastOnce", Value: protocol.AtLeastOnce},
-			{Name: "AtMostOnce", Value: protocol.AtMostOnce},
-		},
+		Items: semantics,
 	}
 
 	lossRate := promptui.Prompt{
@@ -106,7 +103,7 @@ func prompt() *protocol.Server {
 	lossRateInt, _ := strconv.ParseInt(lossRateInput, 10, 32)
 
 	return protocol.New(
-		protocol.WithSemantic(semantics[semIdx].Value),
+		protocol.WithSemantic(semantics[semIdx]),
 		protocol.WithDeadline(5*time.Second),
 		protocol.WithFlightRepo(flightRepo),
 		protocol.WithReservationRepo(reservationRepo),

@@ -14,7 +14,7 @@ var a *app.App
 func init() {
 	c = client.New(
 		client.WithAddr("localhost:8080"),
-		client.WithDeadline(5*time.Second),
+		client.WithDeadline(2*time.Second),
 		client.WithRetries(5),
 		client.WithLogger(logrus.New()),
 	)

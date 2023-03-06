@@ -20,9 +20,15 @@ const (
 	AtLeastOnce
 )
 
-type Semantic struct {
-	Name  string
-	Value Semantics
+func (s Semantics) String() string {
+	switch s {
+	case AtMostOnce:
+		return "AtMostOnce"
+	case AtLeastOnce:
+		return "AtLeastOnce"
+	default:
+		return "Unknown"
+	}
 }
 
 type Server struct {
@@ -69,7 +75,7 @@ func (s *Server) handleSession(sess *Session) {
 	// Start session receive and send loop goroutines
 	sess.Start()
 	s.logger.Info(fmt.Sprintf("Started server on %v", s.addr))
-	s.logger.Info(fmt.Sprintf("Server semantic: %v", s.opts.semantic))
+	s.logger.Info(fmt.Sprintf("Server semantic: %v", s.opts.semantic.String()))
 	s.logger.Info(fmt.Sprintf("Server loss rate: %v", s.opts.lossRate))
 
 	defer sess.Close()
@@ -98,16 +104,15 @@ func (s *Server) writable(stream *Stream) func([]byte, bool) (int, error) {
 
 	atMostOnce := func(data []byte, lossy bool) (int, error) {
 		s.historyLock.Lock()
-		defer s.historyLock.Unlock()
+		// Cache results
+		sid := stream.SID()
+		s.history[string(sid)] = data
+		s.historyLock.Unlock()
 
 		n, err := writable(data, lossy)
 		if err != nil {
 			return n, err
 		}
-
-		// Cache results
-		sid := stream.SID()
-		s.history[string(sid)] = data
 		return n, nil
 	}
 

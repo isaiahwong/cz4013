@@ -75,7 +75,7 @@ func (s *Stream) Close() error {
 	close(s.chDie)
 
 	_, err := s.session.writeFrame(NewFrame(FIN, s.sid, s.rid), time.After(OpenCloseTimeout))
-	s.session.streamClosed(s.sid)
+	s.session.streamClosed(s.sid, s.rid)
 	if err != nil {
 		return err
 	}

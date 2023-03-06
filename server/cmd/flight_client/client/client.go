@@ -2,6 +2,7 @@ package client
 
 import (
 	"errors"
+	"fmt"
 	"io"
 	"net"
 	"time"
@@ -55,24 +56,11 @@ func (c *Client) send(stream *protocol.Stream, method string, query map[string]s
 	var n int
 	tries := 0
 
-	for tries <= c.retries {
-		tries++
-		// Log if it's a retry
-		if tries > 1 {
-			stream.Close()
-			c.logger.WithFields(logrus.Fields{
-				"method": method,
-				"query":  query,
-				"tries":  tries,
-			}).Info("Retrying in 1s")
-			time.Sleep(1 * time.Second)
-			stream, err = c.openWithExisting(stream)
-		}
-
+	retrySend := func(stream *protocol.Stream) (*rpc.Message, error) {
 		// Request
 		err = c.sendOnly(stream, method, query, deadline)
 		if err != nil {
-			continue
+			return nil, err
 		}
 
 		// Response
@@ -82,15 +70,35 @@ func (c *Client) send(stream *protocol.Stream, method string, query map[string]s
 		}
 		n, err = stream.Read(res)
 		if err != nil && err != io.EOF {
-			continue
+			return nil, err
 		}
 
 		m = new(rpc.Message)
 		if err = encoding.Unmarshal(res[:n], m); err != nil && err != io.EOF {
-			continue
+			return nil, err
 		}
-		break
+		return m, err
 	}
+
+	for tries <= c.retries {
+		m, err = retrySend(stream)
+		if err == nil {
+			break
+		}
+
+		c.logger.Error(err)
+		stream.Close()
+
+		c.logger.WithFields(logrus.Fields{
+			"method": method,
+			"query":  query,
+			"tries":  tries,
+		}).Info(fmt.Sprintf("[Retrying] method=%v query=%v tries=%v", method, query, tries))
+
+		stream, err = c.openWithExisting(stream)
+		tries++
+	}
+
 	if err != nil {
 		return nil, stream, err
 	}

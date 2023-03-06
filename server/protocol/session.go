@@ -151,7 +151,7 @@ func (s *Session) open(stream *Stream) (*Stream, error) {
 	case <-s.chProtoError:
 		return nil, s.protoError.Load().(error)
 	default:
-		s.streams[string(stream.sid)] = stream
+		s.streams[fmt.Sprintf("%v%v", stream.sid, stream.rid)] = stream
 		atomic.AddUint32(&s.requestID, 1)
 		return stream, nil
 	}
@@ -236,9 +236,9 @@ func (s *Session) recvLoop() {
 }
 
 // notify the session that a stream has closed
-func (s *Session) streamClosed(sid []byte) {
+func (s *Session) streamClosed(sid []byte, rid uint32) {
 	s.streamLock.Lock()
-	delete(s.streams, string(sid))
+	delete(s.streams, fmt.Sprintf("%v%v", sid, rid))
 	s.streamLock.Unlock()
 }
 
