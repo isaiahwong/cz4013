@@ -20,6 +20,17 @@ const (
 	AtLeastOnce
 )
 
+func IntToSemantics(s int) Semantics {
+	switch s {
+	case 0:
+		return AtMostOnce
+	case 1:
+		return AtLeastOnce
+	default:
+		return Unknown
+	}
+}
+
 func (s Semantics) String() string {
 	switch s {
 	case AtMostOnce:

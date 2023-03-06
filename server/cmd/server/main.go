@@ -2,6 +2,7 @@ package server
 
 import (
 	"fmt"
+	"io"
 	"os"
 	"reflect"
 	"strconv"
@@ -12,12 +13,14 @@ import (
 	"github.com/isaiahwong/cz4013/rpc"
 	"github.com/isaiahwong/cz4013/store"
 	"github.com/manifoldco/promptui"
+	"github.com/sirupsen/logrus"
 )
 
 var flights = []*rpc.Flight{}
 var db *store.DB
 var flightRepo *rpc.FlightRepo
 var reservationRepo *rpc.ReservationRepo
+var logger *logrus.Logger
 
 func init() {
 	// Load flights from csv
@@ -40,6 +43,30 @@ func init() {
 	if err := db.BulkInsert(flightRepo.Relation, flights); err != nil {
 		panic(err)
 	}
+
+	logger = logrus.New()
+	logrus.Trace()
+	file, err := os.OpenFile("./logs/server.log", os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0666)
+	if err != nil {
+		logger.Fatal(err)
+	}
+	// Create a multi-writer that writes to both the console and the file
+	writer := io.MultiWriter(os.Stdout, file)
+
+	// Set the logger's output to the multi-writer
+	logger.SetOutput(writer)
+}
+
+func New(semantic int, deadline int, lossRate int, port string) *protocol.Server {
+	return protocol.New(
+		protocol.WithSemantic(protocol.IntToSemantics(semantic)),
+		protocol.WithDeadline(time.Duration(deadline)*time.Second),
+		protocol.WithFlightRepo(flightRepo),
+		protocol.WithReservationRepo(reservationRepo),
+		protocol.WithLossRate(lossRate),
+		protocol.WithLogger(logger),
+		protocol.WithPort(fmt.Sprintf(":%v", port)),
+	)
 }
 
 func handleInterrupt(err error) error {
@@ -54,8 +81,8 @@ func prompt() *protocol.Server {
 	loadDefault := "Load default config"
 	customConfig := "Custom config"
 	semantics := []protocol.Semantics{
-		protocol.AtLeastOnce,
 		protocol.AtMostOnce,
+		protocol.AtLeastOnce,
 	}
 
 	sp := promptui.Select{
@@ -71,13 +98,7 @@ func prompt() *protocol.Server {
 	}
 
 	if input == loadDefault {
-		return protocol.New(
-			protocol.WithSemantic(protocol.AtMostOnce),
-			protocol.WithDeadline(5*time.Second),
-			protocol.WithFlightRepo(flightRepo),
-			protocol.WithReservationRepo(reservationRepo),
-			protocol.WithLossRate(0),
-		)
+		return New(0, 5, 0, "8080")
 	}
 
 	// Custom config
@@ -102,13 +123,7 @@ func prompt() *protocol.Server {
 	}
 	lossRateInt, _ := strconv.ParseInt(lossRateInput, 10, 32)
 
-	return protocol.New(
-		protocol.WithSemantic(semantics[semIdx]),
-		protocol.WithDeadline(5*time.Second),
-		protocol.WithFlightRepo(flightRepo),
-		protocol.WithReservationRepo(reservationRepo),
-		protocol.WithLossRate(int(lossRateInt)),
-	)
+	return New(semIdx, 5, int(lossRateInt), "8080")
 }
 
 func Start() {

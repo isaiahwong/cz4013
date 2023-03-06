@@ -60,6 +60,9 @@ func WithReservationRepo(r *rpc.ReservationRepo) Option {
 
 func WithLossRate(rate int) Option {
 	return func(o *options) {
+		if rate < 0 || rate > 100 {
+			rate = 0
+		}
 		o.lossRate = rate
 	}
 }

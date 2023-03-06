@@ -1,5 +1,5 @@
 default:
-	go run main.go
+	go run cmd/main.go -i
 
 client: 
 	go run cmd/flight_client/main.go

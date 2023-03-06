@@ -41,11 +41,11 @@ func (a *App) findFlights() {
 	}
 
 	if len(flights) == 0 {
-		a.printTitle("No flights found")
+		common.PrintTitle("No flights found")
 		return
 	}
 
-	a.printTitle("Flights")
+	common.PrintTitle("Flights")
 	w := tabwriter.NewWriter(os.Stdout, 0, 8, 4, ' ', tabwriter.TabIndent)
 	for i, f := range flights {
 		fmt.Println(fmt.Sprintf("\nFlight %v", i+1))
@@ -74,7 +74,7 @@ func (a *App) findFlight() {
 	}
 
 	w := tabwriter.NewWriter(os.Stdout, 0, 8, 4, ' ', tabwriter.TabIndent)
-	a.printTitle("Flight")
+	common.PrintTitle("Flight")
 	fmt.Fprintln(w, flight.String())
 	// Flush the tabwriter to write the output
 	w.Flush()
@@ -117,7 +117,7 @@ func (a *App) reserveFlight() {
 	// print reservation
 	w := tabwriter.NewWriter(os.Stdout, 0, 8, 4, ' ', tabwriter.TabIndent)
 
-	a.printTitle("Reservation Successful")
+	common.PrintTitle("Reservation Successful")
 	fmt.Println("\nReservation Details")
 	fmt.Fprintln(w, reservation.String())
 
@@ -166,7 +166,7 @@ func (a *App) checkInFlight() {
 		return
 	}
 
-	a.printTitle("Reservation Cancelled")
+	common.PrintTitle("Reservation Cancelled")
 	fmt.Fprintln(w, flight.String())
 	// Flush the tabwriter to write the output
 	w.Flush()
@@ -241,7 +241,9 @@ func (a *App) AddMeals() {
 		a.logger.WithError(err).Error(AddMeals)
 		return
 	}
-	a.printTitle("Meal Added")
+	// update reservation
+	a.c.Reservations[rc.ID] = rc
+	common.PrintTitle("Meal Added")
 	fmt.Fprintln(w, rc.String())
 	fmt.Fprintln(w, "Meal Details")
 	for _, meal := range rc.Meals {
@@ -290,7 +292,7 @@ func (a *App) cancelFlight() {
 		return
 	}
 
-	a.printTitle("Reservation Cancelled")
+	common.PrintTitle("Reservation Cancelled")
 	fmt.Fprintln(w, flight.String())
 	// Flush the tabwriter to write the output
 	w.Flush()
@@ -338,7 +340,7 @@ func (a *App) ViewReservations() {
 	}
 
 	w := tabwriter.NewWriter(os.Stdout, 0, 8, 4, ' ', tabwriter.TabIndent)
-	a.printTitle("Reservations")
+	common.PrintTitle("Reservations")
 	for _, v := range a.c.Reservations {
 		fmt.Fprintln(w, v.String())
 		fmt.Fprintln(w, "Meal Details")

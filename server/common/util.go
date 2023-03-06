@@ -28,7 +28,7 @@ func HandleInterrupt(err error) error {
 	return err
 }
 
-var ValidateInt = func(input string) error {
+func ValidateInt(input string) error {
 	_, err := strconv.ParseInt(input, 10, 64)
 	if err != nil {
 		return errors.New("Invalid input")
@@ -36,7 +36,7 @@ var ValidateInt = func(input string) error {
 	return nil
 }
 
-var ValidateRange = func(l, r int64) func(input string) error {
+func ValidateRange(l, r int64) func(input string) error {
 	return func(input string) error {
 		in, err := strconv.ParseInt(input, 10, 64)
 		if err != nil {
@@ -48,4 +48,10 @@ var ValidateRange = func(l, r int64) func(input string) error {
 		}
 		return nil
 	}
+}
+
+func PrintTitle(title string) {
+	fmt.Println("========================================")
+	fmt.Println(title)
+	fmt.Println("========================================")
 }

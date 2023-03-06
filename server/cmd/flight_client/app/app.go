@@ -29,12 +29,6 @@ type App struct {
 	keyStrokeCh chan struct{}
 }
 
-func (a *App) printTitle(title string) {
-	fmt.Println("========================================")
-	fmt.Println(title)
-	fmt.Println("========================================")
-}
-
 func (a *App) onKeyStoke() {
 	fmt.Println("Press enter to cancel...")
 	reader := bufio.NewReader(os.Stdin)
