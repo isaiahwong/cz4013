@@ -223,7 +223,7 @@ func (s *Session) recv() {
 			}
 			s.streamLock.Unlock()
 
-		case ACK:
+		case DNE:
 			s.streamLock.Lock()
 			if stream, ok := s.streams[sidRid]; ok {
 				stream.notifyACKEvent()

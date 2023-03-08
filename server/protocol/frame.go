@@ -8,7 +8,7 @@ import (
 const (
 	SYN byte = iota // stream open
 	PSH             // data push
-	ACK             // data acknowledge end of f
+	DNE             // end of partition
 	NOP             // no operation
 	FIN             // stream close, EOF
 )

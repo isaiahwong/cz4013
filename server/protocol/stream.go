@@ -262,9 +262,9 @@ func (s *Stream) Write(b []byte) (n int, err error) {
 			return sent, err
 		}
 	}
-	n, err = s.session.writeFrame(NewFrame(ACK, s.sid, s.rid, 0), time.After(OpenCloseTimeout))
+	n, err = s.session.writeFrame(NewFrame(DNE, s.sid, s.rid, 0), time.After(OpenCloseTimeout))
 	sent += n
-	// Finish write with ACK
+	// Finish write with DNE
 	if err != nil {
 		return sent, err
 	}

@@ -26,7 +26,7 @@ class Stream:
             bts = bts[size:]
             self.session.writeFrame(frame=frame)
             seqid += 1
-        self.session.writeFrame(frame=Frame(Flag.ACK, self.sid, self.rid, 0))
+        self.session.writeFrame(frame=Frame(Flag.DNE, self.sid, self.rid, 0))
 
     def read(self):
         dataBuffer = bytearray()
@@ -43,7 +43,7 @@ class Stream:
             d, addr = self.session.sock.recvfrom(self.session.mtu)
             buffer = bytearray(d)
             header = Header(buffer)
-            if header.flag() == Flag.FIN.value or header.flag() == Flag.ACK.value:
+            if header.flag() == Flag.FIN.value or header.flag() == Flag.DNE.value:
                 break
             self._read(header, buffer, res)
 
@@ -59,7 +59,7 @@ class Stream:
             d, addr = self.session.sock.recvfrom(1024)
             buffer = bytearray(d)
             header = Header(buffer)
-            if header.flag() == Flag.FIN.value or header.flag() == Flag.ACK.value:
+            if header.flag() == Flag.FIN.value or header.flag() == Flag.DNE.value:
                 break
             self._read(header, buffer, res)
 

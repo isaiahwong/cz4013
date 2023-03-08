@@ -7,13 +7,13 @@ class Flag(Enum):
     """
     SYN: Synchronization flag
     PSH: pushing data immediately instead of waiting
-    ACK: Acknowledgement flag
+    DNE: Acknowledgement flag
     NOP: Nothing
     FIN: Finish
     """
     SYN = 0
     PSH = 1
-    ACK = 2
+    DNE = 2
     NOP = 3
     FIN = 4
 

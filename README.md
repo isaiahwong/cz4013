@@ -31,7 +31,7 @@ A frame in transmission would have the byte arrangement as such:
 |------|--------------------------------------|
 | SYN  | Indicates the start of a new stream. |
 | PSH  | Sends data                           |
-| ACK  | Marks the end of sending a data      |
+| DNE  | Marks the end of sending a data      |
 | NOP  | No operation                         |
 | FIN  | Terminates the stream connection     |
 
