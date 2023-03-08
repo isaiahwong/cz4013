@@ -79,12 +79,12 @@ func NewSession(conn *net.UDPConn, client bool) *Session {
 	s.conn = conn
 	s.client = client
 	s.logger = logrus.New()
-	s.maxFrameSize = 1024
+	s.maxFrameSize = 1500
 	s.streams = make(map[string]*Stream)
 
 	s.chDie = make(chan struct{})
 	s.chWrites = make(chan writeRequest)
-	s.chStreamAccept = make(chan *Stream, 1024)
+	s.chStreamAccept = make(chan *Stream, 1500)
 	s.chSocketReadError = make(chan struct{})
 	s.chSocketWriteError = make(chan struct{})
 	s.chProtoError = make(chan struct{})
@@ -181,7 +181,7 @@ func (s *Session) recv() {
 	var hdr header
 
 	for {
-		b := make([]byte, 1024)
+		b := make([]byte, 1500)
 		// Read header
 		_, addr, err = s.conn.ReadFromUDP(b)
 		if err != nil {
