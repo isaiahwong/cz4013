@@ -14,42 +14,43 @@ class Stream:
         self.deadline = deadline
 
     def write(self, data=bytearray()):
-        frame = Frame(Flag.PSH, self.sid, self.rid, data)  # create the frame
         bts = data
+        seqid = 0
+        frame = Frame(Flag.PSH, self.sid, self.rid, seqid, data)  # create the frame
         while len(bts) > 0:
             size = len(bts)
             if size > self.maxFrameSize:
                 size = self.maxFrameSize
+            frame.seqid = seqid
             frame.Data = bts[:size]
             bts = bts[size:]
             self.session.writeFrame(frame=frame)
-        self.session.writeFrame(frame=Frame(Flag.ACK, self.sid, self.rid))
+            seqid += 1
+        self.session.writeFrame(frame=Frame(Flag.ACK, self.sid, self.rid, 0))
 
     def read(self):
-        if not self.deadline:
-            return self.readIndefinitely()
-        return self.readWithTimeout()
+        dataBuffer = bytearray()
+        res = self.readIndefinitely() if not self.deadline else self.readWithTimeout()
+        res.sort(key=lambda x: x[0])
+        for _, b in res:
+            dataBuffer.extend(b)
+
+        return dataBuffer
 
     def readIndefinitely(self):
         res = []
-        dataBuffer = bytearray()
-
         while True:
-            d, addr = self.session.sock.recvfrom(1024)
+            d, addr = self.session.sock.recvfrom(self.session.mtu)
             buffer = bytearray(d)
             header = Header(buffer)
-
-            self._read(header, res, dataBuffer, buffer)
-
             if header.flag() == Flag.FIN.value or header.flag() == Flag.ACK.value:
                 break
+            self._read(header, buffer, res)
 
         return res
 
     def readWithTimeout(self):
         res = []
-        dataBuffer = bytearray()
-
         while True:
             ready = select.select([self.session.sock], [], [], self.deadline)
             if not ready[0]:
@@ -58,30 +59,23 @@ class Stream:
             d, addr = self.session.sock.recvfrom(1024)
             buffer = bytearray(d)
             header = Header(buffer)
-
-            self._read(header, res, dataBuffer, buffer)
-
             if header.flag() == Flag.FIN.value or header.flag() == Flag.ACK.value:
                 break
+            self._read(header, buffer, res)
 
         return res
 
-    def _read(
-        self, header: Header, res: list, dataBuffer: bytearray, buffer: bytearray
-    ):
+    def _read(self, header: Header, buffer: bytearray, res: list):
         if header.flag() == Flag.PSH.value and header.length() > 0:
-            dataBuffer.extend(
-                buffer[header.header_size : header.header_size + header.length()]
+            res.append(
+                (
+                    header.seqId(),
+                    buffer[header.header_size : header.header_size + header.length()],
+                )
             )
-        elif header.flag() == Flag.ACK.value:
-            res.append(dataBuffer)
-            dataBuffer = bytearray()
-            return
-        elif header.flag() == Flag.FIN.value:
-            return
 
     def close(self):
-        self.session.writeFrame(frame=Frame(Flag.FIN, self.sid, self.rid))
+        self.session.writeFrame(frame=Frame(Flag.FIN, self.sid, self.rid, 0))
 
 
 class Session:
@@ -90,13 +84,14 @@ class Session:
         self.target = target
         self.streams = {}
         self.requestId = 0
+        self.mtu = 1500
 
     def open(self, deadline: int):
         sid = uuid.uuid4().bytes[:16]
         # calling the writeframe function to send synchronization
-        self.writeFrame(frame=Frame(Flag.SYN, bytes(sid), self.requestId))
+        self.writeFrame(frame=Frame(Flag.SYN, bytes(sid), self.requestId, 0))
         stream = Stream(
-            self, bytes(sid), self.requestId, 1024 - Header.header_size, deadline
+            self, bytes(sid), self.requestId, self.mtu - Header.header_size, deadline
         )
         self.streams[f"{str(sid)}{self.requestId}"] = stream
         self.requestId += 1

@@ -146,7 +146,7 @@ func (s *Session) Open(addr *net.UDPAddr) (*Stream, error) {
 }
 
 func (s *Session) open(stream *Stream) (*Stream, error) {
-	if _, err := s.writeFrame(NewFrame(SYN, stream.sid, stream.rid), time.After(OpenCloseTimeout)); err != nil {
+	if _, err := s.writeFrame(NewFrame(SYN, stream.sid, stream.rid, 0), time.After(OpenCloseTimeout)); err != nil {
 		return nil, err
 	}
 
@@ -192,6 +192,7 @@ func (s *Session) recv() {
 		copy(hdr[:], b[:HeaderSize])
 		sid := hdr.StreamID()
 		rid := hdr.RequestID()
+		seqId := hdr.SeqId()
 
 		sidRid := fmt.Sprintf("%v%v", sid, rid)
 
@@ -216,7 +217,7 @@ func (s *Session) recv() {
 			if stream, ok := s.streams[sidRid]; ok {
 				newbuf := make([]byte, int(hdr.Length()))
 				copy(newbuf, b[HeaderSize:HeaderSize+int(hdr.Length())])
-				stream.pushBytes(newbuf)
+				stream.pushBytes(seqId, newbuf)
 				// atomic.AddInt32(&s.bucket, -int32(written))
 				stream.notifyReadEvent()
 			}

@@ -5,10 +5,22 @@ import (
 	"fmt"
 	"io"
 	"net"
+	"sort"
 	"sync"
 	"sync/atomic"
 	"time"
 )
+
+type ByteSeq struct {
+	SeqId uint16
+	Bytes []byte
+}
+
+type BySeq []*ByteSeq
+
+func (a BySeq) Len() int           { return len(a) }
+func (a BySeq) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
+func (a BySeq) Less(i, j int) bool { return a[i].SeqId < a[j].SeqId }
 
 type Stream struct {
 	rid uint32
@@ -21,7 +33,7 @@ type Stream struct {
 
 	frameSize int
 
-	buffers [][]byte
+	buffers []*ByteSeq
 
 	bufferMux sync.Mutex
 
@@ -71,10 +83,25 @@ func (s *Stream) SetWriteDeadline(t time.Time) error {
 	return nil
 }
 
+// SID returns a string representation of byte[] sid
+func (s *Stream) SID() []byte {
+	return s.sid
+}
+
+func (s *Stream) RID() uint32 {
+	return s.rid
+}
+
+// SIDRID returns the concatenation of sid rid
+// Used to identify a unique stream
+func (s *Stream) SIDRID() string {
+	return fmt.Sprintf("%v%v", s.sid, s.rid)
+}
+
 func (s *Stream) Close() error {
 	close(s.chDie)
 
-	_, err := s.session.writeFrame(NewFrame(FIN, s.sid, s.rid), time.After(OpenCloseTimeout))
+	_, err := s.session.writeFrame(NewFrame(FIN, s.sid, s.rid, 0), time.After(OpenCloseTimeout))
 	s.session.streamClosed(s.sid, s.rid)
 	if err != nil {
 		return err
@@ -95,52 +122,46 @@ func (s *Stream) IsClosed() bool {
 
 // Implements io.Reader
 func (s *Stream) Read(b []byte) (int, error) {
+	byteSeqSlice := []*ByteSeq{}
+
+	readLoop := func() error {
+		for {
+			byteSeq := s.read()
+			if byteSeq != nil {
+				byteSeqSlice = append(byteSeqSlice, byteSeq)
+			}
+
+			err := s.waitRead()
+			if err == io.EOF {
+				return nil
+			}
+			if err != nil {
+				return err
+			}
+		}
+	}
+
+	err := readLoop()
+	sort.Sort(BySeq(byteSeqSlice))
 	n := 0
-	for {
-		n += s.read(b, n)
-		err := s.waitRead()
-		if err == io.EOF {
-			return n, nil
-		}
-		if err != nil {
-			return n, err
-		}
+	for _, byteSeq := range byteSeqSlice {
+		copy(b[n:n+len(byteSeq.Bytes)], byteSeq.Bytes)
+		n += len(byteSeq.Bytes)
 	}
+	return n, err
 }
 
-// SID returns a string representation of byte[] sid
-func (s *Stream) SID() []byte {
-	return s.sid
-}
-
-func (s *Stream) RID() uint32 {
-	return s.rid
-}
-
-// SIDRID returns the concatenation of sid rid
-// Used to identify a unique stream
-func (s *Stream) SIDRID() string {
-	return fmt.Sprintf("%v%v", s.sid, s.rid)
-}
-
-func (s *Stream) read(b []byte, offset int) (n int) {
-	if len(b) == 0 {
-		return 0
-	}
-
+func (s *Stream) read() *ByteSeq {
 	s.bufferMux.Lock()
-	if len(s.buffers) > 0 {
-		n = copy(b[offset:offset+len(s.buffers[0])], s.buffers[0])
-		s.buffers[0] = s.buffers[0][n:]
-		// Read finish
-		if len(s.buffers[0]) == 0 {
-			s.buffers[0] = nil
-			s.buffers = s.buffers[1:]
-		}
-	}
-	s.bufferMux.Unlock()
+	defer s.bufferMux.Unlock()
 
-	return n
+	if len(s.buffers) == 0 {
+		return nil
+	}
+
+	b := s.buffers[0]
+	s.buffers = s.buffers[1:]
+	return b
 }
 
 func (s *Stream) waitRead() error {
@@ -180,10 +201,10 @@ func (s *Stream) waitRead() error {
 }
 
 // pushBytes append buf to buffers
-func (s *Stream) pushBytes(buf []byte) (written int, err error) {
+func (s *Stream) pushBytes(seqId uint16, buf []byte) (written int, err error) {
 	s.bufferMux.Lock()
 	defer s.bufferMux.Unlock()
-	s.buffers = append(s.buffers, buf)
+	s.buffers = append(s.buffers, &ByteSeq{SeqId: seqId, Bytes: buf})
 	return
 }
 
@@ -219,7 +240,9 @@ func (s *Stream) Write(b []byte) (n int, err error) {
 
 	// frame split and transmit
 	sent := 0
-	frame := NewFrame(PSH, s.sid, s.rid)
+	seq := uint16(0)
+
+	frame := NewFrame(PSH, s.sid, s.rid, seq)
 	bts := b
 	for len(bts) > 0 {
 		size := len(bts)
@@ -228,15 +251,18 @@ func (s *Stream) Write(b []byte) (n int, err error) {
 			size = s.frameSize
 		}
 		frame.Data = bts[:size]
+		frame.SeqId = seq
 		bts = bts[size:]
 		n, err := s.session.writeFrame(frame, deadline)
-		// s.numWritten++
+
+		seq += 1
 		sent += n
+
 		if err != nil {
 			return sent, err
 		}
 	}
-	n, err = s.session.writeFrame(NewFrame(ACK, s.sid, s.rid), time.After(OpenCloseTimeout))
+	n, err = s.session.writeFrame(NewFrame(ACK, s.sid, s.rid, 0), time.After(OpenCloseTimeout))
 	sent += n
 	// Finish write with ACK
 	if err != nil {

@@ -15,10 +15,11 @@ const (
 
 // Frame used to encapsulate data in UDP.
 type Frame struct {
-	Flag byte
-	Rid  uint32 // Request id used for repeated requests
-	Sid  []byte // Stream Id
-	Data []byte
+	Flag  byte
+	Sid   []byte // Stream Id
+	Rid   uint32 // Request id used for repeated requests
+	SeqId uint16
+	Data  []byte
 }
 
 func (f Frame) Header() header {
@@ -33,20 +34,25 @@ func (f Frame) Header() header {
 	binary.LittleEndian.PutUint32(h[3:], f.Rid)
 
 	// Stream id
-	copy(h[7:], f.Sid)
+	copy(h[3+4:3+4+16], f.Sid)
+
+	// Sequence id
+	binary.LittleEndian.PutUint16(h[23:], f.SeqId)
+
 	return h
 }
 
-func NewFrame(flag byte, sid []byte, rid uint32) Frame {
-	return Frame{Flag: flag, Sid: sid, Rid: rid}
+func NewFrame(flag byte, sid []byte, rid uint32, seqId uint16) Frame {
+	return Frame{Flag: flag, Sid: sid, Rid: rid, SeqId: seqId}
 }
 
 const (
 	sizeOfFlag   = 1
 	sizeOfLength = 2
+	sizeOfSeqId  = 2
 	sizeOfRid    = 4
 	sizeOfSid    = 16
-	HeaderSize   = sizeOfFlag + sizeOfSid + sizeOfRid + sizeOfLength
+	HeaderSize   = sizeOfFlag + sizeOfLength + sizeOfRid + sizeOfSid + sizeOfSeqId
 )
 
 type header [HeaderSize]byte
@@ -60,9 +66,13 @@ func (h header) Length() uint16 {
 }
 
 func (h header) RequestID() uint32 {
-	return binary.LittleEndian.Uint32(h[3 : 3+4])
+	return binary.LittleEndian.Uint32(h[3:7])
 }
 
 func (h header) StreamID() []byte {
-	return h[7 : 7+16]
+	return h[7:23]
+}
+
+func (h header) SeqId() uint16 {
+	return binary.LittleEndian.Uint16(h[23:25])
 }

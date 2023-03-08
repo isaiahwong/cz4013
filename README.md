@@ -14,15 +14,16 @@ Frame is the mode of data encapsulation. A frame in transmission will have a `he
 A frame in transmission would have the byte arrangement as such:
 
 ```
-| Flag | Length of Data | SID | RID | Data |
+| Flag | Length of Data | SID | RID | SeqID | Data |
 ```
 ### Fields of a Frame
 | Fields | Description                |
 |--------|----------------------------|
 | Flag   | The command flag           |
 | Len    | The length of data         |
-| SID    | the id of the stream       |
-| RID    | the request id of the stream       |
+| SID    | The id of the stream       |
+| RID    | The request id of the stream       |
+| SeqID  | The sequence of a frame that may have been broken down |
 | Data   | The data being transmitted |
 
 ### Flag

@@ -5,6 +5,7 @@ from message import message, ErrorMsg, Message, Error
 import codec
 import datetime
 from misc import futuretime
+
 # from threading import Thread, Event
 from multiprocessing import Process, Event
 
@@ -21,7 +22,7 @@ def rpc_get_flights(IP_ADD: str, PORT: int):
     )
     stream.write(codec.marshal(req))
     b = stream.read()
-    res: Message = codec.unmarshal(b[0], Message())
+    res: Message = codec.unmarshal(b, Message())
 
     # We add a single Flight for codec to know what to unmarshal
     if res.error:
@@ -43,45 +44,43 @@ def rpc_get_flights(IP_ADD: str, PORT: int):
 
 
 def monitorUpdates(IP_ADD: str, PORT: int, duration: int):
-        c = Client(IP_ADD, PORT)
-        stream = c.open(None)
-    
-        req = Message(
-            rpc="MonitorUpdates",
-            query={"timestamp": str(int(futuretime(duration * 60 * 60) * 1000))},
-        )
+    c = Client(IP_ADD, PORT)
+    stream = c.open(None)
 
-        stream.write(codec.marshal(req))
+    req = Message(
+        rpc="MonitorUpdates",
+        query={"timestamp": str(int(futuretime(duration * 60 * 60) * 1000))},
+    )
 
-        
+    stream.write(codec.marshal(req))
 
-        while True:
-            try:
-                b = stream.read()
-                res: Message = codec.unmarshal(b[0], Message())
-                if res.error:
-                    res.error.printerror()
-                    return
+    while True:
+        try:
+            b = stream.read()
+            res: Message = codec.unmarshal(b, Message())
+            if res.error:
+                res.error.printerror()
+                return
 
-                flight: Flight() = codec.unmarshal(res.body, Flight())
-                print(
-                    "New Updated flight: \n",
-                    flight.id,
-                    flight.source,
-                    flight.destination,
-                    flight.airfare,
-                    flight.seat_availability,
-                )
+            flight: Flight() = codec.unmarshal(res.body, Flight())
+            print(
+                "New Updated flight: \n",
+                flight.id,
+                flight.source,
+                flight.destination,
+                flight.airfare,
+                flight.seat_availability,
+            )
 
-            except Exception as e:
-                print(e)
-                pass
+        except Exception as e:
+            print(e)
+            pass
 
-            time.sleep(1)  # yield for ctx switch
-        return
+        time.sleep(1)  # yield for ctx switch
+    return
 
 
-def reserveFlight(IP_ADD: str, PORT: int, reserved:list):
+def reserveFlight(IP_ADD: str, PORT: int, reserved: list):
     c = Client(IP_ADD, PORT)
     flightid = str(input("\nEnter the plane id you wish to reserve a seat in: "))
     seats = int(input("\nEnter the number of seats you wish to reserve: "))
@@ -90,7 +89,7 @@ def reserveFlight(IP_ADD: str, PORT: int, reserved:list):
     req = Message(rpc="ReserveFlight", query={"id": flightid, "seats": str(seats)})
     stream.write(codec.marshal(req))
     b = stream.read()
-    res: Message = codec.unmarshal(b[0], Message())
+    res: Message = codec.unmarshal(b, Message())
     if res.error:
         res.error.printerror()
     else:
@@ -112,7 +111,7 @@ def reserveFlight(IP_ADD: str, PORT: int, reserved:list):
 def cancelFlight(IP_ADD: str, PORT: int, reserved: list):
     c = Client(IP_ADD, PORT)
 
-    if len(reserved)==0:
+    if len(reserved) == 0:
         print("You have no reserved flights! ")
         return
 
@@ -125,15 +124,15 @@ def cancelFlight(IP_ADD: str, PORT: int, reserved: list):
     reserveid = int(input("Enter the plane id you wish to cancel a seat in: "))
     stream = c.open(5)
 
-    req = Message(rpc="CancelFlight", query={"id": str(reserved[reserveid-1])})
+    req = Message(rpc="CancelFlight", query={"id": str(reserved[reserveid - 1])})
     stream.write(codec.marshal(req))
     b = stream.read()
-    res: Message = codec.unmarshal(b[0], Message())
+    res: Message = codec.unmarshal(b, Message())
     if res.error:
         res.error.printerror()
     else:
         f: Flight() = codec.unmarshal(res.body, Flight())
-        reserved.pop(reserveid-1)
+        reserved.pop(reserveid - 1)
         print(
             "Flight Details: ",
             f.id,
@@ -159,7 +158,7 @@ def main(IP_ADD: str, PORT: int):
     exit = False
     process_flag = False
     reserved = []
-    monitoring = Process(target=monitorUpdates, args=(IP_ADD, PORT,1))
+    monitoring = Process(target=monitorUpdates, args=(IP_ADD, PORT, 1))
     while not exit:
         try:
             print_menu()
@@ -171,28 +170,36 @@ def main(IP_ADD: str, PORT: int):
             elif option == "3":
                 cancelFlight(IP_ADD, PORT, reserved)
             elif option == "4":
-                count = 0 
+                count = 0
                 duration = -1
-                while count<3:
-                    user_input = input("For how long will you want to monitor updates? (in hours and maximum 24 hours).")
+                while count < 3:
+                    user_input = input(
+                        "For how long will you want to monitor updates? (in hours and maximum 24 hours)."
+                    )
                     duration = int(user_input)
-                    if duration>0 and duration<24:
+                    if duration > 0 and duration < 24:
                         break
                     count += 1
-                
-                if count>=3:
-                    print("You have exceeded the number of tries to set the duration!. Default being set to one hour!")
+
+                if count >= 3:
+                    print(
+                        "You have exceeded the number of tries to set the duration!. Default being set to one hour!"
+                    )
                     duration = 1
-                
+
                 if monitoring.is_alive():
                     print("terminating previous monitoring request...")
                     monitoring.terminate()
                     print("Creating new monitoring request....")
-                    monitoring = Process(target=monitorUpdates, args=(IP_ADD, PORT,duration))
+                    monitoring = Process(
+                        target=monitorUpdates, args=(IP_ADD, PORT, duration)
+                    )
                     monitoring.start()
                 elif process_flag:
                     print("Creating new monitoring request....")
-                    monitoring = Process(target=monitorUpdates, args=(IP_ADD, PORT,duration))
+                    monitoring = Process(
+                        target=monitorUpdates, args=(IP_ADD, PORT, duration)
+                    )
                     monitoring.start()
                 else:
                     print("Your first monitoring request....")
@@ -212,6 +219,7 @@ def main(IP_ADD: str, PORT: int):
                 continue
         except KeyboardInterrupt():
             break
+
 
 if __name__ == "__main__":
     # IP_ADD = str(input("Enter the ip address: "))
