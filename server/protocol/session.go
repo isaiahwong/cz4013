@@ -15,29 +15,38 @@ import (
 
 const OpenCloseTimeout = 30 * time.Second // stream open/close timeout
 
+// Session represents the abstraction of transport between a client and a server.
+// Session can be used synomously as a client or a server.
 type Session struct {
-	client bool
-
-	requestID uint32 // write request monotonic increasing
-
-	conn     *net.UDPConn
-	capacity int
-
-	nextStreamIDLock sync.Mutex
-	// next stream identifier used for clients
-	nextStreamID uint32
-
-	chStreamAccept chan *Stream
-	// if session has been closed
-	chDie  chan struct{}
+	// Session Logger
 	logger *logrus.Logger
 
-	// mutex streams
+	// Indicates if a session is a client or a server
+	client bool
+
+	// Writes request monotonic increasing
+	requestID uint32
+
+	// UDP connection that defines the transport layer
+	conn *net.UDPConn
+
+	// Channel that notifies for new streams
+	chStreamAccept chan *Stream
+
+	// Channel that notifies if session has been closed
+	chDie chan struct{}
+
+	// Mutex for streams
 	streamLock sync.Mutex
-	// mapping of sid to streams.
-	streams  map[string]*Stream
+
+	// Mapping of SID/RID to streams.
+	// Stores all active streams
+	streams map[string]*Stream
+
+	// Channel for outgoing writes
 	chWrites chan writeRequest
 
+	// Defines the maximum frame size for transport
 	maxFrameSize int
 
 	// Socket errors
@@ -64,11 +73,11 @@ type writeResult struct {
 	err error
 }
 
+// NewSession creates a new session that defines a server or client
 func NewSession(conn *net.UDPConn, client bool) *Session {
 	s := new(Session)
 	s.conn = conn
 	s.client = client
-	s.capacity = 1024
 	s.logger = logrus.New()
 	s.maxFrameSize = 1024
 	s.streams = make(map[string]*Stream)
@@ -84,8 +93,8 @@ func NewSession(conn *net.UDPConn, client bool) *Session {
 }
 
 func (s *Session) Start() {
-	go s.recvLoop()
-	go s.sendLoop()
+	go s.recv()
+	go s.send()
 }
 
 func (s *Session) Close() error {
@@ -166,7 +175,7 @@ func (s *Session) IsClosed() bool {
 	}
 }
 
-func (s *Session) recvLoop() {
+func (s *Session) recv() {
 	var addr *net.UDPAddr
 	var err error
 	var hdr header
@@ -263,7 +272,7 @@ func (s *Session) notifyProtoError(err error) {
 	})
 }
 
-func (s *Session) sendLoop() {
+func (s *Session) send() {
 	var buf []byte
 	var n int
 	var err error

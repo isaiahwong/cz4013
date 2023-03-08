@@ -20,6 +20,7 @@ A frame in transmission would have the byte arrangement as such:
 | Fields | Description                |
 |--------|----------------------------|
 | Flag   | The command flag           |
+| Len    | The length of data         |
 | SID    | the id of the stream       |
 | RID    | the request id of the stream       |
 | Data   | The data being transmitted |
