@@ -54,7 +54,6 @@ func getCodec(t reflect.Value) (Codec, error) {
 		default:
 			return newSliceCodec(t)
 		}
-
 	}
 	return nil, errors.New("Unsupported type " + t.String())
 }
@@ -398,8 +397,10 @@ func (s *structCodec) genCodec(t reflect.Value) error {
 	l := t.NumField()
 	s.fields = []*fieldCodec{}
 
+	// Iterate the fields within a struct
 	for i := 0; i < l; i++ {
 		field := t.Field(i)
+		// Retrieve respective codec
 		codec, err := getCodec(field)
 		if err != nil {
 			return err

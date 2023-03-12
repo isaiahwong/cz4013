@@ -163,7 +163,7 @@ func (s *Server) handleRequest(stream *Stream) {
 		s.historyLock.Lock()
 		sid := stream.SID()
 		// Check cache
-		buf, ok := s.history[string(sid)]
+		cached, ok := s.history[string(sid)]
 		s.historyLock.Unlock()
 
 		if !ok {
@@ -176,7 +176,7 @@ func (s *Server) handleRequest(stream *Stream) {
 
 		// Return cache
 		s.logger.Info(fmt.Sprintf("Returning cached result for %v", stream.addr))
-		_, aErr := s.writable(stream)(buf, false)
+		_, aErr := s.writable(stream)(cached, false)
 		return aErr
 	}
 

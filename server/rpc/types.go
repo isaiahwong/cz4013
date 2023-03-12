@@ -102,13 +102,15 @@ type ReserveFlight struct {
 	Flight       *Flight
 	SeatReserved int32
 	CheckIn      bool
+	Cancelled    bool
 	Meals        []*Food
 }
 
 func (r *ReserveFlight) String() string {
-	return fmt.Sprintf("%v%v%v",
+	return fmt.Sprintf("%v%v%v%v",
 		common.TitleValueLine("ID", r.ID, 1),
 		common.TitleValueLine("SeatReserved", r.SeatReserved, 1),
+		common.TitleValueLine("Cancelled", r.Cancelled, 1),
 		common.TitleValueLine("CheckIn", r.CheckIn, 1),
 	)
 }

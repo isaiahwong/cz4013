@@ -269,6 +269,15 @@ func (r *RPC) CancelFlight(m *Message, read Readable, write Writable) error {
 	method := "CancelFlight"
 	lossy := true
 
+	res := func(rf *ReserveFlight) error {
+		b, err := encoding.Marshal(rf)
+		if err != nil {
+			return r.error(method, ErrInternalError, err.Error(), read, write)
+		}
+
+		return r.ok(method, b, lossy, read, write)
+	}
+
 	r.reserveMux.Lock()
 	r.reserveMux.Unlock()
 
@@ -286,6 +295,10 @@ func (r *RPC) CancelFlight(m *Message, read Readable, write Writable) error {
 		return r.error(method, ErrNoReserveFlightFound, fmt.Sprintf("No reservation found with %v", id), read, write)
 	}
 
+	if rf.Cancelled {
+		return res(rf)
+	}
+
 	if rf.CheckIn {
 		return r.error(method, ErrNoReserveFlightFound, "Can't cancel. Reservation checked in", read, write)
 	}
@@ -299,8 +312,9 @@ func (r *RPC) CancelFlight(m *Message, read Readable, write Writable) error {
 		return r.error(method, ErrNoFlightFound, "No flights associated with reserve flight ", read, write)
 	}
 
-	// Delete reservation
-	err = r.reservationRepo.Delete(rf)
+	rf.Cancelled = true
+	// Update reservation
+	err = r.reservationRepo.Update(rf)
 	if err != nil {
 		return r.error(method, ErrInternalError, err.Error(), read, write)
 	}
@@ -311,14 +325,9 @@ func (r *RPC) CancelFlight(m *Message, read Readable, write Writable) error {
 		return r.error(method, ErrInternalError, err.Error(), read, write)
 	}
 
-	b, err := encoding.Marshal(flight)
-	if err != nil {
-		return r.error(method, ErrInternalError, err.Error(), read, write)
-	}
-
 	r.broadcastFlights(flight)
 
-	return r.ok(method, b, lossy, read, write)
+	return res(rf)
 }
 
 func (r *RPC) MonitorUpdates(m *Message, read Readable, write Writable) error {
@@ -337,6 +346,7 @@ func (r *RPC) MonitorUpdates(m *Message, read Readable, write Writable) error {
 
 	// Create channel
 	r.chFlightUpdatesMux.Lock()
+	index := len(r.chFlightUpdates)
 	fCh := make(chan *Flight)
 	r.chFlightUpdates = append(r.chFlightUpdates, fCh)
 	r.chFlightUpdatesMux.Unlock()
@@ -352,6 +362,12 @@ func (r *RPC) MonitorUpdates(m *Message, read Readable, write Writable) error {
 			}
 			r.ok(method, b, lossy, read, write)
 		case <-time.After(duration):
+			// remove channel
+			r.chFlightUpdatesMux.Lock()
+			// remove via index
+			r.chFlightUpdates = append(r.chFlightUpdates[:index], r.chFlightUpdates[index+1:]...)
+			r.chFlightUpdatesMux.Unlock()
+
 			return r.ok(method, []byte{}, lossy, read, write)
 
 		}

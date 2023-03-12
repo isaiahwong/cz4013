@@ -176,7 +176,7 @@ func (c *Client) AddMeals(id string, mealId string) (*rpc.ReserveFlight, error) 
 }
 
 // CancelFlight is a rpc method that cancels a flight by reservation id
-func (c *Client) CancelFlight(id string) (*rpc.Flight, error) {
+func (c *Client) CancelFlight(id string) (*rpc.ReserveFlight, error) {
 	method := "CancelFlight"
 	// Open a new stream
 	stream, err := c.open()
@@ -199,11 +199,11 @@ func (c *Client) CancelFlight(id string) (*rpc.Flight, error) {
 	// remove reservation
 	delete(c.Reservations, id)
 
-	flight := new(rpc.Flight)
-	if err = encoding.Unmarshal(res.Body, flight); err != nil && err != io.EOF {
+	reserveFlight := new(rpc.ReserveFlight)
+	if err = encoding.Unmarshal(res.Body, reserveFlight); err != nil && err != io.EOF {
 		return nil, err
 	}
-	return flight, stream.Close()
+	return reserveFlight, stream.Close()
 }
 
 // MonitorUpdates is a rpc method that monitors updates for a duration.

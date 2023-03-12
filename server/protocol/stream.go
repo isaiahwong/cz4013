@@ -121,7 +121,7 @@ func (s *Stream) IsClosed() bool {
 }
 
 // Implements io.Reader
-func (s *Stream) Read(b []byte) (int, error) {
+func (s *Stream) Read(buf []byte) (int, error) {
 	byteSeqSlice := []*ByteSeq{}
 
 	readLoop := func() error {
@@ -141,11 +141,15 @@ func (s *Stream) Read(b []byte) (int, error) {
 		}
 	}
 
+	// Reads until EOF
 	err := readLoop()
+	// Sort frames by seqId
 	sort.Sort(BySeq(byteSeqSlice))
+
 	n := 0
+	// Copy frames to a single buffer
 	for _, byteSeq := range byteSeqSlice {
-		copy(b[n:n+len(byteSeq.Bytes)], byteSeq.Bytes)
+		copy(buf[n:n+len(byteSeq.Bytes)], byteSeq.Bytes)
 		n += len(byteSeq.Bytes)
 	}
 	return n, err
@@ -262,9 +266,9 @@ func (s *Stream) Write(b []byte) (n int, err error) {
 			return sent, err
 		}
 	}
+	// Finish write with DNE
 	n, err = s.session.writeFrame(NewFrame(DNE, s.sid, s.rid, 0), time.After(OpenCloseTimeout))
 	sent += n
-	// Finish write with DNE
 	if err != nil {
 		return sent, err
 	}

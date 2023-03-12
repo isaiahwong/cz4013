@@ -147,7 +147,6 @@ def getCodec(obj) -> Codec:
         return StringCodec()
     elif isinstance(obj, bytearray):
         return ByteArrayCodec()
-
     else:
         return ObjectCodec(obj)
 

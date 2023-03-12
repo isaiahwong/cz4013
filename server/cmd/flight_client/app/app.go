@@ -86,7 +86,7 @@ func New(c *client.Client) *App {
 		Label: "Select an RPC method",
 		Items: []string{
 			FindFlights, FindFlight,
-			ReserveFlight, CheckInFlight,
+			ReserveFlight, CancelFlight,
 			ViewReservations,
 			AddMeals, MonitorUpdates,
 		},

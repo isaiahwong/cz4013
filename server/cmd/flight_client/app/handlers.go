@@ -286,14 +286,14 @@ func (a *App) cancelFlight() {
 		return
 	}
 
-	flight, err := a.c.CancelFlight(reservationID)
+	reserveFlight, err := a.c.CancelFlight(reservationID)
 	if err != nil {
 		a.logger.WithError(err).Error(CancelFlight)
 		return
 	}
 
 	common.PrintTitle("Reservation Cancelled")
-	fmt.Fprintln(w, flight.String())
+	fmt.Fprintln(w, reserveFlight.String())
 	// Flush the tabwriter to write the output
 	w.Flush()
 }

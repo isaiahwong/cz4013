@@ -131,7 +131,8 @@ def cancelFlight(IP_ADD: str, PORT: int, reserved: list):
     if res.error:
         res.error.printerror()
     else:
-        f: Flight() = codec.unmarshal(res.body, Flight())
+        rf: ReserveFlight = codec.unmarshal(res.body, ReserveFlight())
+        f = rf.flight
         reserved.pop(reserveid - 1)
         print(
             "Flight Details: ",

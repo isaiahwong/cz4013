@@ -36,10 +36,12 @@ class ReserveFlight:
         flight: Flight = Flight(),
         seats_reserved: int = 0,
         check_in: bool = False,
+        cancelled: bool = False,
         meals: list = [Food()],
     ):
         self.id = id
         self.flight = flight
         self.seats_reserved = seats_reserved
         self.check_in = check_in
+        self.cancelled = cancelled
         self.meals = meals

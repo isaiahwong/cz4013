@@ -68,7 +68,6 @@ func (r *RPC) router(m *Message, read Readable, write Writable) error {
 	} else if m.RPC == "CancelFlight" {
 		return r.CancelFlight(m, read, write)
 	}
-
 	return r.error(m.RPC, ErrNotFound, "RPC method not found", read, write)
 }
 
