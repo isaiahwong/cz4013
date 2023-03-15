@@ -35,13 +35,19 @@ def generate_flight_data(num_flights: int) -> List[Flight]:
         "Dallas",
         "San Jose",
     ]
+
     flights = []
     now = datetime.now()
     for i in range(num_flights):
+        destinationList = cities[:]
+        source = random.choice(cities)
+        destinationList.remove(source)
+        destination = random.choice(destinationList)
+
         flight = Flight(
             ID=random.randint(1000, 9999),
-            source=random.choice(cities),
-            destination=random.choice(cities),
+            source=source,
+            destination=destination,
             timestamp=int(
                 (now + timedelta(hours=random.randint(24, 24 * 50))).timestamp()
             ),
@@ -53,7 +59,7 @@ def generate_flight_data(num_flights: int) -> List[Flight]:
 
 
 def main():
-    flights = generate_flight_data(50)
+    flights = generate_flight_data(100)
     with open("flights.csv", mode="w", newline="") as csv_file:
         writer = csv.writer(csv_file)
         writer.writerow(

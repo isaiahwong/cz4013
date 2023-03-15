@@ -176,7 +176,7 @@ func (s *Server) handleRequest(stream *Stream) {
 
 		// Return cache
 		s.logger.Info(fmt.Sprintf("Returning cached result for %v", stream.addr))
-		_, aErr := s.writable(stream)(cached, false)
+		_, aErr := s.writable(stream)(cached, true)
 		return aErr
 	}
 

@@ -80,7 +80,7 @@ func (c *Client) send(stream *protocol.Stream, method string, query map[string]s
 		return m, err
 	}
 
-	for tries <= c.retries {
+	for tries < c.retries {
 		m, err = retrySend(stream)
 		if err == nil {
 			break

@@ -135,16 +135,16 @@ func (r *RPC) ReserveFlight(m *Message, read Readable, write Writable) error {
 		return r.error(method, ErrFailToReserve, fmt.Sprintf("Not enough seats to reserve for flight %v", idInt), read, write)
 	}
 
+	flight.SeatAvailablity -= seatsInt32
+	if err = r.flightRepo.Update(flight); err != nil {
+		return r.error(method, ErrFailToReserve, err.Error(), read, write)
+	}
+
 	reserve := &ReserveFlight{
 		ID:           uuid.NewString(),
 		Flight:       flight,
 		SeatReserved: seatsInt32,
 		CheckIn:      false,
-	}
-
-	flight.SeatAvailablity -= seatsInt32
-	if err = r.flightRepo.Update(flight); err != nil {
-		return r.error(method, ErrFailToReserve, err.Error(), read, write)
 	}
 
 	if err = r.reservationRepo.Insert(reserve); err != nil {
