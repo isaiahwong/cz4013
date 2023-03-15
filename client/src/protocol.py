@@ -12,6 +12,7 @@ class Stream:
         self.rid = rid  # request id
         self.maxFrameSize = maxFrameSize  # max frame size in the session
         self.deadline = deadline
+        self.closed = False
 
     def write(self, data=bytearray()):
         bts = data
@@ -44,6 +45,8 @@ class Stream:
             buffer = bytearray(d)
             header = Header(buffer)
             if header.flag() == Flag.FIN.value or header.flag() == Flag.DNE.value:
+                if Flag.FIN.value == header.flag():
+                    self.closed = True
                 break
             self._read(header, buffer, res)
 
@@ -54,12 +57,15 @@ class Stream:
         while True:
             ready = select.select([self.session.sock], [], [], self.deadline)
             if not ready[0]:
+                self.closed = True
                 raise TimeoutError("Read timeout")
 
             d, addr = self.session.sock.recvfrom(1024)
             buffer = bytearray(d)
             header = Header(buffer)
             if header.flag() == Flag.FIN.value or header.flag() == Flag.DNE.value:
+                if Flag.FIN.value == header.flag():
+                    self.closed = True
                 break
             self._read(header, buffer, res)
 
@@ -86,7 +92,18 @@ class Session:
         self.requestId = 0
         self.mtu = 1500
 
-    def open(self, deadline: int):
+    def openWithExisting(self, stream: Stream, deadline: int):
+        sid = stream.sid
+        # calling the writeframe function to send synchronization
+        self.writeFrame(frame=Frame(Flag.SYN, bytes(sid), self.requestId, 0))
+        stream = Stream(
+            self, bytes(sid), self.requestId, self.mtu - Header.header_size, deadline
+        )
+        self.streams[f"{str(sid)}{self.requestId}"] = stream
+        self.requestId += 1
+        return stream
+
+    def open(self, deadline: int = None):
         sid = uuid.uuid4().bytes[:16]
         # calling the writeframe function to send synchronization
         self.writeFrame(frame=Frame(Flag.SYN, bytes(sid), self.requestId, 0))
@@ -113,5 +130,8 @@ class Client:
             sock=self.sock, target=(addr, port)
         )  # call the session class
 
-    def open(self, deadline: int):
+    def open(self, deadline: int = None):
         return self.session.open(deadline=deadline)
+
+    def openWithExisting(self, stream: Stream, deadline: int = None):
+        return self.session.openWithExisting(stream=stream, deadline=deadline)

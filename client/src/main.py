@@ -5,30 +5,17 @@ from message import message, ErrorMsg, Message, Error
 import codec
 import datetime
 from misc import futuretime
+from app import App
 
 # from threading import Thread, Event
 from multiprocessing import Process, Event
 
 # Done with addition of error checking
-def rpc_get_flights(IP_ADD: str, PORT: int):
-    c = Client(IP_ADD, PORT)
-    stream = c.open(deadline=5)
+def rpc_get_flights(app: App):
     source = str(input("Enter Origin of Flight: "))
     destination = str(input("Enter Destination of Flight: "))
 
-    req = Message(
-        rpc="FindFlights",
-        query={"source": source, "destination": destination},
-    )
-    stream.write(codec.marshal(req))
-    b = stream.read()
-    res: Message = codec.unmarshal(b, Message())
-
-    # We add a single Flight for codec to know what to unmarshal
-    if res.error:
-        res.error.printerror()
-    else:
-        flights = codec.unmarshal(res.body, [Flight()])
+    flights = app.find_flights(source, destination)
 
     for f in flights:
         print(f.id, f.source, f.destination, f.airfare, f.seat_availability)
@@ -38,7 +25,7 @@ def rpc_get_flights(IP_ADD: str, PORT: int):
         reserve = input("Do you wish to proceed with reserving the flight? (Y/N)")
 
     if reserve == "Y":
-        reserveFlight(IP_ADD, PORT)
+        rpc_reserve_flight(app)
     else:
         return
 
@@ -80,21 +67,11 @@ def monitorUpdates(IP_ADD: str, PORT: int, duration: int):
     return
 
 
-def reserveFlight(IP_ADD: str, PORT: int, reserved: list):
-    c = Client(IP_ADD, PORT)
-    flightid = str(input("\nEnter the plane id you wish to reserve a seat in: "))
-    seats = int(input("\nEnter the number of seats you wish to reserve: "))
-    stream = c.open(5)
-
-    req = Message(rpc="ReserveFlight", query={"id": flightid, "seats": str(seats)})
-    stream.write(codec.marshal(req))
-    b = stream.read()
-    res: Message = codec.unmarshal(b, Message())
-    if res.error:
-        res.error.printerror()
-    else:
-        r: ReserveFlight = codec.unmarshal(res.body, ReserveFlight())
-        f = r.flight
+def rpc_reserve_flight(app: App):
+    flightid = input("\nEnter the plane id you wish to reserve a seat in: ")
+    seats = input("\nEnter the number of seats you wish to reserve: ")
+    try:
+        r: ReserveFlight = app.reserve_flight(flightid, seats)
         reserved.append(r.id)
         print(
             "Your Flight Details are: ",
@@ -106,6 +83,8 @@ def reserveFlight(IP_ADD: str, PORT: int, reserved: list):
             "Your reservation id is: ",
             r.id,
         )
+    except Exception as e:
+        print(e)
 
 
 def cancelFlight(IP_ADD: str, PORT: int, reserved: list):
@@ -147,7 +126,7 @@ def cancelFlight(IP_ADD: str, PORT: int, reserved: list):
 def print_menu():
     print("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
     print("1: findFlight")
-    print("2: reserveFlight")
+    print("2: rpc_reserve_flight")
     print("3: cancelFlight")
     print("4: start monitoring updates")
     print("5: stop monitoring updates")
@@ -155,19 +134,18 @@ def print_menu():
     print("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
 
 
-def main(IP_ADD: str, PORT: int):
+def main():
     exit = False
     process_flag = False
-    reserved = []
-    monitoring = Process(target=monitorUpdates, args=(IP_ADD, PORT, 1))
+    a = App()
     while not exit:
         try:
             print_menu()
             option = str(input("Enter your choice: "))
             if option == "1":
-                rpc_get_flights(IP_ADD, PORT)
+                rpc_get_flights(a)
             elif option == "2":
-                reserveFlight(IP_ADD, PORT, reserved)
+                rpc_reserve_flight(IP_ADD, PORT, reserved)
             elif option == "3":
                 cancelFlight(IP_ADD, PORT, reserved)
             elif option == "4":
@@ -227,5 +205,4 @@ if __name__ == "__main__":
     # PORT = int(input("Enter the port: "))
     IP_ADD = "127.0.0.1"
     PORT = 8080
-
-    main(IP_ADD, PORT)
+    main()

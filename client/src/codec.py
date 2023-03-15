@@ -3,6 +3,12 @@ from abc import ABC, abstractmethod
 import struct
 
 
+class EOF(Exception):
+    def __init__(self, message):
+        self.message = message
+        super().__init__(self.message)
+
+
 class Encoder:
     def __init__(self):
         self.out = bytearray()
@@ -54,7 +60,7 @@ class BufferReader:
         if size == 0:
             return b""
         if self.offset >= len(self.buffer):
-            raise Exception("End of buffer")
+            raise EOF("end of buffer")
 
         self.offset += size
         return self.buffer[self.offset - size : self.offset]
