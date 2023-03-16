@@ -2,6 +2,12 @@ import struct
 from enum import Enum
 
 
+class EOF(Exception):
+    def __init__(self, message):
+        self.message = message
+        super().__init__(self.message)
+
+
 class Flag(Enum):
     # flags for the transmission
     """
@@ -67,15 +73,15 @@ class Header:
         # < means little-endian H means unsigned short
         return struct.unpack("<H", self.buf[1 : 1 + 2])[0]
 
-    def requestId(self):
+    def rid(self):
         # 4 bytes
         # < means little-endian I means unsigned int32
         return struct.unpack("<I", self.buf[3 : 3 + 4])[0]
 
-    def streamId(self) -> bytes:
+    def sid(self) -> bytes:
         # 4 bytes
         # < means little-endian I means unsigned int32
-        return self.buf[7 : 7 + 16]
+        return bytes(self.buf[7 : 7 + 16])
 
     def seqId(self):
         # 2 bytes

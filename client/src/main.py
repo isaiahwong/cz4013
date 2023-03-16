@@ -15,19 +15,22 @@ def rpc_get_flights(app: App):
     source = str(input("Enter Origin of Flight: "))
     destination = str(input("Enter Destination of Flight: "))
 
-    flights = app.find_flights(source, destination)
+    try:
+        flights = app.find_flights(source, destination)
 
-    for f in flights:
-        print(f.id, f.source, f.destination, f.airfare, f.seat_availability)
+        for f in flights:
+            print(f.id, f.source, f.destination, f.airfare, f.seat_availability)
 
-    reserve = ""
-    while reserve not in ["Y", "N"]:
-        reserve = input("Do you wish to proceed with reserving the flight? (Y/N)")
+        reserve = ""
+        while reserve not in ["Y", "N"]:
+            reserve = input("Do you wish to proceed with reserving the flight? (Y/N)")
 
-    if reserve == "Y":
-        rpc_reserve_flight(app)
-    else:
-        return
+        if reserve == "Y":
+            rpc_reserve_flight(app)
+        else:
+            return
+    except Exception as e:
+        print(e)
 
 
 def monitorUpdates(IP_ADD: str, PORT: int, duration: int):
@@ -72,14 +75,13 @@ def rpc_reserve_flight(app: App):
     seats = input("\nEnter the number of seats you wish to reserve: ")
     try:
         r: ReserveFlight = app.reserve_flight(flightid, seats)
-        reserved.append(r.id)
         print(
             "Your Flight Details are: ",
-            f.id,
-            f.source,
-            f.destination,
-            f.airfare,
-            f.seat_availability,
+            r.flight.id,
+            r.flight.source,
+            r.flight.destination,
+            r.flight.airfare,
+            r.flight.seat_availability,
             "Your reservation id is: ",
             r.id,
         )
@@ -87,48 +89,45 @@ def rpc_reserve_flight(app: App):
         print(e)
 
 
-def cancelFlight(IP_ADD: str, PORT: int, reserved: list):
-    c = Client(IP_ADD, PORT)
-
-    if len(reserved) == 0:
-        print("You have no reserved flights! ")
+def rpc_cancel_flight(app: App):
+    if len(app.reservations) == 0:
+        print("You have no reservations")
         return
 
-    print("Your reserved flights are: ", end=" ")
-    count = 1
-    for item in reserved:
-        print(count, ": ", item, end=" ")
+    print("Your reserved flights are:\n")
+    idxToReservations = []
+    count = 0
+    for k, v in app.reservations.items():
+        print(f"Reservation [{count}]")
+        print("Flight Id: ", v.flight.id)
+        print("Source: ", v.flight.source)
+        print("Destination: ", v.flight.destination)
+        print("Airfare: ", v.flight.airfare)
+        print("Seats Reserved: ", v.seats_reserved)
+        print("Cancelled: ", v.cancelled)
+        idxToReservations.append(v.id)
         count += 1
-    print("\n ")
-    reserveid = int(input("Enter the plane id you wish to cancel a seat in: "))
-    stream = c.open(5)
 
-    req = Message(rpc="CancelFlight", query={"id": str(reserved[reserveid - 1])})
-    stream.write(codec.marshal(req))
-    b = stream.read()
-    res: Message = codec.unmarshal(b, Message())
-    if res.error:
-        res.error.printerror()
-    else:
-        rf: ReserveFlight = codec.unmarshal(res.body, ReserveFlight())
+    idx = -1
+    while idx < 0 or idx >= len(idxToReservations):
+        idx = int(input("Enter the plane id you wish to cancel a seat in: "))
+
+    try:
+        rf = app.cancel_flight(idxToReservations[idx])
+        if not rf:
+            return
         f = rf.flight
-        reserved.pop(reserveid - 1)
-        print(
-            "Flight Details: ",
-            f.id,
-            f.source,
-            f.destination,
-            f.airfare,
-            f.seat_availability,
-        )
+        print("Reservation cancelled")
+    except Exception as e:
+        print(e)
 
 
 def print_menu():
     print("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
-    print("1: findFlight")
-    print("2: rpc_reserve_flight")
-    print("3: cancelFlight")
-    print("4: start monitoring updates")
+    print("1: Find Flights")
+    print("2: Reserve Flights")
+    print("3: Cancel Flight")
+    print("4: Start monitoring updates")
     print("5: stop monitoring updates")
     print("6: exit")
     print("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
@@ -145,9 +144,9 @@ def main():
             if option == "1":
                 rpc_get_flights(a)
             elif option == "2":
-                rpc_reserve_flight(IP_ADD, PORT, reserved)
+                rpc_reserve_flight(a)
             elif option == "3":
-                cancelFlight(IP_ADD, PORT, reserved)
+                rpc_cancel_flight(a)
             elif option == "4":
                 count = 0
                 duration = -1
@@ -165,25 +164,7 @@ def main():
                         "You have exceeded the number of tries to set the duration!. Default being set to one hour!"
                     )
                     duration = 1
-
-                if monitoring.is_alive():
-                    print("terminating previous monitoring request...")
-                    monitoring.terminate()
-                    print("Creating new monitoring request....")
-                    monitoring = Process(
-                        target=monitorUpdates, args=(IP_ADD, PORT, duration)
-                    )
-                    monitoring.start()
-                elif process_flag:
-                    print("Creating new monitoring request....")
-                    monitoring = Process(
-                        target=monitorUpdates, args=(IP_ADD, PORT, duration)
-                    )
-                    monitoring.start()
-                else:
-                    print("Your first monitoring request....")
-                    monitoring.start()
-                process_flag = False
+                a.monitor_updates(duration, blocking=True)
             elif option == "5":
                 monitoring.terminate()
                 process_flag = True
@@ -196,13 +177,11 @@ def main():
             else:
                 print("Invalid Option!")
                 continue
-        except KeyboardInterrupt():
+        except KeyboardInterrupt:
             break
 
 
 if __name__ == "__main__":
     # IP_ADD = str(input("Enter the ip address: "))
     # PORT = int(input("Enter the port: "))
-    IP_ADD = "127.0.0.1"
-    PORT = 8080
     main()

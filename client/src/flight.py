@@ -45,3 +45,6 @@ class ReserveFlight:
         self.check_in = check_in
         self.cancelled = cancelled
         self.meals = meals
+
+    def __str__(self):
+        return f"ReserveFlight(id={self.id}, flight={self.flight}, seats_reserved={self.seats_reserved}, check_in={self.check_in}, cancelled={self.cancelled}, meals={self.meals})"

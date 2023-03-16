@@ -1,12 +1,7 @@
 import copy
 from abc import ABC, abstractmethod
+from frame import EOF
 import struct
-
-
-class EOF(Exception):
-    def __init__(self, message):
-        self.message = message
-        super().__init__(self.message)
 
 
 class Encoder:

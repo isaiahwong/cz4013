@@ -2,7 +2,6 @@ package server
 
 import (
 	"fmt"
-	"io"
 	"os"
 	"reflect"
 	"strconv"
@@ -45,16 +44,16 @@ func init() {
 	}
 
 	logger = logrus.New()
-	logrus.Trace()
-	file, err := os.OpenFile("./logs/server.log", os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0666)
-	if err != nil {
-		logger.Fatal(err)
-	}
-	// Create a multi-writer that writes to both the console and the file
-	writer := io.MultiWriter(os.Stdout, file)
+	// logrus.Trace()
+	// file, err := os.OpenFile("./logs/server.log", os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0666)
+	// if err != nil {
+	// 	logger.Fatal(err)
+	// }
+	// // Create a multi-writer that writes to both the console and the file
+	// writer := io.MultiWriter(os.Stdout, file)
 
-	// Set the logger's output to the multi-writer
-	logger.SetOutput(writer)
+	// // Set the logger's output to the multi-writer
+	// logger.SetOutput(writer)
 }
 
 func New(semantic int, deadline int, lossRate int, port string) *protocol.Server {

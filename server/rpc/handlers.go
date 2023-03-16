@@ -151,6 +151,8 @@ func (r *RPC) ReserveFlight(m *Message, read Readable, write Writable) error {
 		return r.error(method, ErrFailToReserve, err.Error(), read, write)
 	}
 
+	fmt.Println(reserve)
+
 	r.broadcastFlights(flight)
 
 	b, err := encoding.Marshal(reserve)
@@ -350,6 +352,9 @@ func (r *RPC) MonitorUpdates(m *Message, read Readable, write Writable) error {
 	fCh := make(chan *Flight)
 	r.chFlightUpdates = append(r.chFlightUpdates, fCh)
 	r.chFlightUpdatesMux.Unlock()
+
+	fmt.Println("Current Time : ", time.Now().Local().Format(time.RFC3339))
+	fmt.Println("Deadline     : ", monitorInterval.Local().Format(time.RFC3339))
 
 	duration := time.Until(*monitorInterval)
 	for {

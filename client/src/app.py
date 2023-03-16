@@ -1,10 +1,12 @@
+import asyncio
 from protocol import Client, Stream
-from queue import Queue
+from queue import Queue, Empty
 from misc import futuretime
 from threading import Thread
 import time
 from flight import Flight, ReserveFlight
 from message import message, ErrorMsg, Message, Error
+from frame import EOF
 import codec
 import datetime
 
@@ -18,6 +20,11 @@ class App:
         self.mtu = mtu
         self.reservations = {}
         self.client = Client(remote, port)
+        self.keyEnter = Queue()
+
+    def on_enter_quit(self):
+        input("\nPress enter to quit..\n")
+        return EOF("")
 
     def _sendOnly(
         self, existing: Stream, method: str, query: dict, deadline: int = None
@@ -37,11 +44,11 @@ class App:
 
         def retrySend(existing: Stream):
             msg = None
-            stream = self._sendOnly(existing, method, query)
+            stream = self._sendOnly(existing, method, query, deadline)
             try:
                 b = stream.read()
                 msg: Message = codec.unmarshal(b, Message())
-            except codec.EOF as e:
+            except EOF as e:
                 pass
             if msg.error:
                 raise Exception(msg.error)
@@ -54,6 +61,7 @@ class App:
                 return [stream, msg]
             except Exception as e:
                 print(e)
+                print(f"Retrying: {tries}\n")
                 tries += 1
 
         raise Exception(f"Failed to send {method} after {self.retries} tries")
@@ -114,6 +122,9 @@ class App:
         return r
 
     def cancel_flight(self, id: str) -> ReserveFlight:
+        if len(self.reservations) == 0:
+            return None
+
         method = "CancelFlight"
         stream = None
         if not id:
@@ -144,17 +155,40 @@ class App:
                 b = None
                 try:
                     b = stream.read()
-                except codec.EOF as e:
+                except EOF as e:
                     return
-
                 res: Message = codec.unmarshal(b, Message())
                 if res.error:
                     raise Exception(res.error)
 
-                flight = codec.unmarshal(res.body, Flight())
+                flight: Flight = codec.unmarshal(res.body, Flight())
+                print("New Flight")
+                print("Flight Id: ", flight.id)
+                print("Source: ", flight.source)
+                print("Destination: ", flight.destination)
+                print("Airfare: ", flight.airfare)
+                print("Seats Reserved: ", flight.seat_availability)
+
+        async def async_wrap(fn):
+            """Wraps a function in to an async function"""
+            loop = asyncio.get_running_loop()
+            future = loop.run_in_executor(None, fn)
+            result = await future
+            return result
+
+        async def concurrent():
+            """Executes async functions concurrently"""
+            done, pending = await asyncio.wait(
+                [
+                    async_wrap(read),
+                    async_wrap(self.on_enter_quit),
+                ],
+                return_when=asyncio.FIRST_COMPLETED,
+            )
+            stream.close()
 
         if blocking:
-            read()
+            asyncio.run(concurrent())
             return
 
         t = Thread(target=read)

@@ -1,8 +1,10 @@
 import socket
 import time
 import select
-from frame import Header, Frame, Flag
+from frame import Header, Frame, Flag, EOF
 import uuid
+from threading import Thread, Lock
+from queue import Queue, Empty
 
 
 class Stream:
@@ -13,6 +15,33 @@ class Stream:
         self.maxFrameSize = maxFrameSize  # max frame size in the session
         self.deadline = deadline
         self.closed = False
+        self.buffers = Queue()  # Thread safe queue
+        self.mutex = Lock()
+
+        # We assume a single read and dne event per call
+        self.dneEvent = Queue()
+        self.closeEvent = Queue()
+        self.deadlineEvent = Queue()
+
+    def pushBuffer(self, b: bytearray):
+        self.buffers.put(item=b, block=True)
+
+    def notifyDNE(self):
+        self.dneEvent.put(True, block=True)
+
+    def notifyClose(self):
+        self.closeEvent.put(True, block=True)
+
+    def setDeadline(self, deadline: int = 0):
+        def runnable():
+            start_time = time.time()
+            while time.time() < start_time + deadline:
+                time.sleep(1 / 1000)  # yield cpu
+            self.deadlineEvent.put(True, block=True)
+
+        t = Thread(target=runnable)
+        t.daemon = True
+        t.start()
 
     def write(self, data=bytearray()):
         bts = data
@@ -31,56 +60,68 @@ class Stream:
 
     def read(self):
         dataBuffer = bytearray()
-        res = self.readIndefinitely() if not self.deadline else self.readWithTimeout()
+        res = self.readIndefinitely()
         res.sort(key=lambda x: x[0])
         for _, b in res:
             dataBuffer.extend(b)
 
         return dataBuffer
 
+    def readWait(self):
+        while True:
+            if self.deadline:
+                try:
+                    _ = self.deadlineEvent.get(block=False)
+                    raise TimeoutError("Read timeout")
+                except Empty:
+                    pass
+
+            try:
+                t = self.dneEvent.get(block=False)
+                if not self.buffers.empty():
+                    self.dneEvent.put(item=t, block=True)
+                    return True
+                return False
+            except Empty:
+                pass
+
+            try:
+                _ = self.closeEvent.get(block=False)
+                if not self.buffers.empty():
+                    return True
+                return False
+            except Empty:
+                pass
+            time.sleep(1 / 1000)  # yield cpu
+
     def readIndefinitely(self):
         res = []
+        if self.deadline != None:
+            self.setDeadline(self.deadline)
+
         while True:
-            d, addr = self.session.sock.recvfrom(self.session.mtu)
-            buffer = bytearray(d)
-            header = Header(buffer)
-            if header.flag() == Flag.FIN.value or header.flag() == Flag.DNE.value:
-                if Flag.FIN.value == header.flag():
-                    self.closed = True
-                break
-            self._read(header, buffer, res)
-
-        return res
-
-    def readWithTimeout(self):
-        res = []
-        while True:
-            ready = select.select([self.session.sock], [], [], self.deadline)
-            if not ready[0]:
-                self.closed = True
-                raise TimeoutError("Read timeout")
-
-            d, addr = self.session.sock.recvfrom(1024)
-            buffer = bytearray(d)
-            header = Header(buffer)
-            if header.flag() == Flag.FIN.value or header.flag() == Flag.DNE.value:
-                if Flag.FIN.value == header.flag():
-                    self.closed = True
-                break
-            self._read(header, buffer, res)
-
-        return res
-
-    def _read(self, header: Header, buffer: bytearray, res: list):
-        if header.flag() == Flag.PSH.value and header.length() > 0:
-            res.append(
-                (
-                    header.seqId(),
-                    buffer[header.header_size : header.header_size + header.length()],
+            try:
+                buffer = self.buffers.get(block=False)
+                header = Header(buffer)
+                res.append(
+                    (
+                        header.seqId(),
+                        buffer[
+                            header.header_size : header.header_size + header.length()
+                        ],
+                    )
                 )
-            )
+            except Empty:
+                pass
+            hasBuffers = self.readWait()
+            if not hasBuffers:
+                break
+
+        return res
 
     def close(self):
+        self.notifyClose()
+        self.closed = True
         self.session.writeFrame(frame=Frame(Flag.FIN, self.sid, self.rid, 0))
 
 
@@ -91,6 +132,57 @@ class Session:
         self.streams = {}
         self.requestId = 0
         self.mtu = 1500
+        self.mutex = Lock()
+        self.read_thread = Thread(target=self.recv)
+        self.read_thread.daemon = True
+        self.read_thread.start()
+
+    def recv(self):
+        """client implementation of recv only.
+        Does not handle SYN.
+        """
+
+        def loop():
+            while True:
+                d, addr = self.sock.recvfrom(self.mtu)
+                buffer = bytearray(d)
+                header = Header(buffer)
+                if header.flag() == Flag.PSH.value:
+                    if header.length() <= 0:
+                        continue
+                    self.mutex.acquire()
+                    if self.streamKey(header.sid(), header.rid()) in self.streams:
+                        stream: Stream = self.streams[
+                            self.streamKey(header.sid(), header.rid())
+                        ]
+                        stream.pushBuffer(buffer)
+                    self.mutex.release()
+                elif header.flag() == Flag.DNE.value:
+                    self.mutex.acquire()
+                    if self.streamKey(header.sid(), header.rid()) in self.streams:
+                        stream: Stream = self.streams[
+                            self.streamKey(header.sid(), header.rid())
+                        ]
+                        stream.notifyDNE()
+                    self.mutex.release()
+                elif header.flag() == Flag.FIN.value:
+                    self.mutex.acquire()
+                    if self.streamKey(header.sid(), header.rid()) in self.streams:
+                        stream: Stream = self.streams[
+                            self.streamKey(header.sid(), header.rid())
+                        ]
+                        stream.close()
+                    self.mutex.release()
+
+        try:
+            loop()
+        except KeyboardInterrupt:
+            return
+        except Exception as e:
+            print(e)
+
+    def streamKey(self, sid: bytes, rid: int):
+        return str(f"{str(sid)}{rid}")
 
     def openWithExisting(self, stream: Stream, deadline: int):
         sid = stream.sid
@@ -99,8 +191,10 @@ class Session:
         stream = Stream(
             self, bytes(sid), self.requestId, self.mtu - Header.header_size, deadline
         )
-        self.streams[f"{str(sid)}{self.requestId}"] = stream
+        self.mutex.acquire()
+        self.streams[self.streamKey(sid, self.requestId)] = stream
         self.requestId += 1
+        self.mutex.release()
         return stream
 
     def open(self, deadline: int = None):
@@ -110,8 +204,11 @@ class Session:
         stream = Stream(
             self, bytes(sid), self.requestId, self.mtu - Header.header_size, deadline
         )
-        self.streams[f"{str(sid)}{self.requestId}"] = stream
+        self.mutex.acquire()
+        self.streams[self.streamKey(sid, self.requestId)] = stream
         self.requestId += 1
+        self.mutex.release()
+
         return stream
 
     def writeFrame(self, frame: Frame, deadline: int = 0):
