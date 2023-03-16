@@ -4,7 +4,7 @@ from queue import Queue, Empty
 from misc import futuretime
 from threading import Thread
 import time
-from flight import Flight, ReserveFlight
+from flight import Flight, ReserveFlight, Food
 from message import message, ErrorMsg, Message, Error
 from frame import EOF
 import codec
@@ -144,6 +144,33 @@ class App:
         del self.reservations[r.id]
         stream.close()
         return r
+
+    def get_meals(self):
+        method = "GetMeals"
+
+        req = Message(
+            rpc=method,
+        )
+
+        stream, msg = self._send(method, req.query, self.deadline)
+        f = codec.unmarshal(msg.body, [Food()])
+        stream.close()
+        return f
+
+    def add_meals(self, id: str, meal_id: str):
+        method = "AddMeals"
+        req = Message(
+            rpc=method,
+            query={
+                "id": id,
+                "meal_id": meal_id,
+            },
+        )
+
+        stream, msg = self._send(method, req.query, self.deadline)
+        rf = codec.unmarshal(msg.body, ReserveFlight())
+        stream.close()
+        return rf
 
     def monitor_updates(self, duration: int, blocking=True):
         method = "MonitorUpdates"

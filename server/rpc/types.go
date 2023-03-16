@@ -63,7 +63,7 @@ func (f *Flight) String() string {
 }
 
 type Food struct {
-	ID   int64
+	ID   int32
 	Name string
 }
 
@@ -74,8 +74,8 @@ func (r *Food) String() string {
 	)
 }
 
-func GetFood() map[int64]*Food {
-	foodMap := map[int64]*Food{}
+func GetFood() map[int32]*Food {
+	foodMap := map[int32]*Food{}
 	meals := []*Food{
 		{
 			0, "Steak",

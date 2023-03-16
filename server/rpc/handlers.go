@@ -249,7 +249,7 @@ func (r *RPC) AddMeals(m *Message, read Readable, write Writable) error {
 	}
 
 	meals := GetFood()
-	meal, ok := meals[int64(mealId)]
+	meal, ok := meals[int32(mealId)]
 	if !ok {
 		return r.error(method, ErrMealsNotFound, fmt.Sprintf("Meal not found with %v", mealIdStr), read, write)
 	}
