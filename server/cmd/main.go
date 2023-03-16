@@ -38,6 +38,7 @@ func runServer(deadline int, semantics int, port string, lossRate int) {
 	s.Serve()
 }
 
+// Entry point to application. Parses command line arguments and starts server or client
 func main() {
 	var interactive bool
 	var semantics int
@@ -47,13 +48,14 @@ func main() {
 	var address string
 	var port string
 
+	// Setup command line arguments
 	flag.BoolVar(&interactive, "i", false, "Enables interactive mode. Other options will be ignored when interactive mode is enabled.")
-	flag.IntVar(&deadline, "d", 5, "Deadline of a request response in seconds")
-	flag.IntVar(&semantics, "s", 1, "[Server] Semantics of server. 0: AtLeastOnce, 1: AtMostOnce")
-	flag.StringVar(&port, "p", "8080", "[Server] Server's port")
-	flag.IntVar(&lossRate, "l", 0, "[Server] Server's loss rate")
-	flag.IntVar(&retries, "r", 5, "[Client] Client retries when requests fails")
-	flag.StringVar(&address, "a", "localhost:8080", "[Client] Remote address for client")
+	flag.IntVar(&deadline, "deadline", 5, "Deadline of a request response in seconds")
+	flag.IntVar(&semantics, "semantic", 1, "[Server] Semantics of server. 0: AtLeastOnce, 1: AtMostOnce")
+	flag.StringVar(&port, "port", "8080", "[Server] Server's port")
+	flag.IntVar(&lossRate, "loss", 0, "[Server] Server's loss rate")
+	flag.IntVar(&retries, "retries", 5, "[Client] Client retries when requests fails")
+	flag.StringVar(&address, "remote", "localhost:8080", "[Client] Remote address for client")
 
 	flag.Usage = func() {
 		flag.PrintDefaults()

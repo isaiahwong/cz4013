@@ -1,0 +1,44 @@
+# Build stage
+FROM golang:1.18-alpine AS build
+
+WORKDIR /app
+
+# Copy the go.mod and go.sum files into the container
+COPY go.mod go.sum ./
+
+# Download the Go module dependencies
+RUN go mod download
+
+# Copy the source code into the container
+COPY . .
+
+# Build the binary for Windows
+RUN GOOS=windows GOARCH=amd64 go build -o flightsystem-windows.exe ./cmd/main.go
+
+# Build the binary for Ubuntu
+RUN GOOS=linux GOARCH=amd64 go build -o flightsystem-ubuntu ./cmd/main.go
+
+# Build the binary for macOS
+RUN GOOS=darwin GOARCH=amd64 go build -o flightsystem-macos ./cmd/main.go
+
+# Runtime stage
+FROM alpine:3.14 AS runtime
+
+WORKDIR /app
+
+# Copy the binaries from the build stage into the runtime stage
+COPY --from=build /app/flightsystem-windows.exe /app/flightsystem-ubuntu /app/flightsystem-macos /app/
+
+
+RUN printf '#!/bin/sh\n\
+  set -e\n\
+  mkdir -p /release\n\
+  cp /app/flightsystem-windows.exe /release/\n\
+  cp /app/flightsystem-ubuntu /release/\n\
+  cp /app/flightsystem-macos /release/\n' > start.sh
+
+# Set permissions on the start script
+RUN chmod +x start.sh
+
+# Start the script when the container starts
+ENTRYPOINT ["./start.sh"]

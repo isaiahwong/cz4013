@@ -2,7 +2,7 @@
 ```
 $ make
 or
-$ go run cmd/main.go -d 3 -s 1 -l 50 -p 8080
+$ go run cmd/main.go -deadline 3 -semantic 1 -loss 50 -port 8080
 ```
 
 ## Reference
