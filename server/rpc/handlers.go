@@ -58,6 +58,10 @@ func (r *RPC) FindFlights(m *Message, read Readable, write Writable) error {
 		}
 	}
 
+	if len(filteredFlights) == 0 {
+		return r.error(method, ErrNoFlightsFound, fmt.Sprintf("No flights found from %v to %v", src, dest), read, write)
+	}
+
 	b, err := encoding.Marshal(filteredFlights)
 	if err != nil {
 		return r.error(method, err, "", read, write)
@@ -332,7 +336,7 @@ func (r *RPC) CancelFlight(m *Message, read Readable, write Writable) error {
 	return res(rf)
 }
 
-func (r *RPC) MonitorUpdates(m *Message, read Readable, write Writable) error {
+func (r *RPC) MonitorUpdates(addr string, m *Message, read Readable, write Writable) error {
 	method := "MonitorUpdates"
 	// We ensure MonitorUpdates is not susceptible to frame drops
 	lossy := false
@@ -353,14 +357,13 @@ func (r *RPC) MonitorUpdates(m *Message, read Readable, write Writable) error {
 	r.chFlightUpdates = append(r.chFlightUpdates, fCh)
 	r.chFlightUpdatesMux.Unlock()
 
-	fmt.Println("Current Time : ", time.Now().Local().Format(time.RFC3339))
-	fmt.Println("Deadline     : ", monitorInterval.Local().Format(time.RFC3339))
+	r.logger.Info("Current Time : ", time.Now().Local().Format(time.RFC3339))
+	r.logger.Info("Deadline     : ", monitorInterval.Local().Format(time.RFC3339))
 
 	duration := time.Until(*monitorInterval)
 	for {
 		select {
 		case flight := <-fCh:
-
 			b, err := encoding.Marshal(flight)
 			if err != nil {
 				return r.error(method, err, "", read, write)
@@ -370,9 +373,13 @@ func (r *RPC) MonitorUpdates(m *Message, read Readable, write Writable) error {
 			// remove channel
 			r.chFlightUpdatesMux.Lock()
 			// remove via index
-			r.chFlightUpdates = append(r.chFlightUpdates[:index], r.chFlightUpdates[index+1:]...)
+			if len(r.chFlightUpdates) == 1 {
+				r.chFlightUpdates = []chan *Flight{}
+			} else {
+				r.chFlightUpdates = append(r.chFlightUpdates[:index], r.chFlightUpdates[index+1:]...)
+			}
 			r.chFlightUpdatesMux.Unlock()
-
+			r.logger.Info(fmt.Sprintf("Released: %v", addr))
 			return r.ok(method, []byte{}, lossy, read, write)
 
 		}

@@ -18,6 +18,9 @@ class Flight:
         self.seat_availability = seat_availability
         self.timestamp = timestamp
 
+    def __str__(self):
+        return f"Flight Id: {self.id}\nSource: {self.source}\nDestination: {self.destination}\nAirfare: {self.airfare}\nSeat Available: {self.seat_availability}\n"
+
 
 class Food:
     def __init__(
@@ -27,6 +30,9 @@ class Food:
     ):
         self.id = id
         self.name = name
+
+    def __str__(self):
+        return f"Id: {self.id}\nName: {self.name}"
 
 
 class ReserveFlight:
@@ -47,4 +53,6 @@ class ReserveFlight:
         self.meals = meals
 
     def __str__(self):
-        return f"ReserveFlight(id={self.id}, flight={self.flight}, seats_reserved={self.seats_reserved}, check_in={self.check_in}, cancelled={self.cancelled}, meals={self.meals})"
+        s = f"Flight Id: {self.flight.id}\nSource: {self.flight.source}\nDestination: {self.flight.destination}\nAirfare: {self.flight.airfare}\nSeats Reserved: {self.seats_reserved}\nCancelled: {self.cancelled}"
+        m = [meal.name for meal in self.meals]
+        return s + f"\nMeals: {m}\n"

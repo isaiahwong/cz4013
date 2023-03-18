@@ -9,6 +9,7 @@ import (
 	"github.com/manifoldco/promptui"
 )
 
+// prompt provides an interactive prompt to configure the server and client
 func prompt() {
 	s := "Load Server"
 	c := "Load Client"

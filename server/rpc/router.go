@@ -47,10 +47,10 @@ func (r *RPC) HandleRequest(addr string, read Readable, write Writable) error {
 	}
 
 	r.logger.Info(fmt.Sprintf("[%v] - %v", m.RPC, addr))
-	return r.router(m, read, write)
+	return r.router(addr, m, read, write)
 }
 
-func (r *RPC) router(m *Message, read Readable, write Writable) error {
+func (r *RPC) router(addr string, m *Message, read Readable, write Writable) error {
 	if m.RPC == "FindFlights" {
 		return r.FindFlights(m, read, write)
 	} else if m.RPC == "FindFlight" {
@@ -58,7 +58,7 @@ func (r *RPC) router(m *Message, read Readable, write Writable) error {
 	} else if m.RPC == "ReserveFlight" {
 		return r.ReserveFlight(m, read, write)
 	} else if m.RPC == "MonitorUpdates" {
-		return r.MonitorUpdates(m, read, write)
+		return r.MonitorUpdates(addr, m, read, write)
 	} else if m.RPC == "CheckInFlight" {
 		return r.CheckInFlight(m, read, write)
 	} else if m.RPC == "GetMeals" {

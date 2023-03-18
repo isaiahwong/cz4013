@@ -168,7 +168,7 @@ func (s *Server) handleRequest(stream *Stream) {
 
 		if !ok {
 			return handleRequest(
-				stream.addr.IP.String(),
+				stream.addr.String(),
 				s.readable(stream),
 				s.writable(stream),
 			)

@@ -1,7 +1,7 @@
 from protocol import Client, Stream
 import time
 from flight import Flight, ReserveFlight
-from message import message, ErrorMsg, Message, Error
+from message import Message, Error
 import codec
 import datetime
 from misc import futuretime
@@ -11,177 +11,169 @@ from app import App
 from multiprocessing import Process, Event
 
 # Done with addition of error checking
-def rpc_get_flights(app: App):
+def find_flights(app: App):
     source = str(input("Enter Origin of Flight: "))
     destination = str(input("Enter Destination of Flight: "))
 
     try:
         flights = app.find_flights(source, destination)
 
+        print()
         for f in flights:
             print(f.id, f.source, f.destination, f.airfare, f.seat_availability)
 
-        reserve = ""
-        while reserve not in ["Y", "N"]:
-            reserve = input("Do you wish to proceed with reserving the flight? (Y/N)")
-
+        print()
+        reserve = input("Reserving flight? (Y/N)").upper()
         if reserve == "Y":
-            rpc_reserve_flight(app)
+            reserve_flight(app)
         else:
             return
     except Exception as e:
-        print(e)
+        print(f"Error: {e}\n")
 
 
-def monitorUpdates(IP_ADD: str, PORT: int, duration: int):
-    c = Client(IP_ADD, PORT)
-    stream = c.open(None)
+def find_flight(app: App):
+    id = str(input("Enter Flight id: "))
 
-    req = Message(
-        rpc="MonitorUpdates",
-        query={"timestamp": str(int(futuretime(duration * 60 * 60) * 1000))},
-    )
-
-    stream.write(codec.marshal(req))
-
-    while True:
-        try:
-            b = stream.read()
-            res: Message = codec.unmarshal(b, Message())
-            if res.error:
-                res.error.printerror()
-                return
-
-            flight: Flight() = codec.unmarshal(res.body, Flight())
-            print(
-                "New Updated flight: \n",
-                flight.id,
-                flight.source,
-                flight.destination,
-                flight.airfare,
-                flight.seat_availability,
-            )
-
-        except Exception as e:
-            print(e)
-            pass
-
-        time.sleep(1)  # yield for ctx switch
-    return
+    try:
+        f = app.find_flight(id)
+        print(f)
+    except Exception as e:
+        print(f"Error: {e}\n")
 
 
-def rpc_reserve_flight(app: App):
-    flightid = input("\nEnter the plane id you wish to reserve a seat in: ")
-    seats = input("\nEnter the number of seats you wish to reserve: ")
+def reserve_flight(app: App):
+    flightid = input("\nEnter Flight id: ")
+    seats = input("\nEnter number of seats: ")
     try:
         r: ReserveFlight = app.reserve_flight(flightid, seats)
-        print(
-            "Your Flight Details are: ",
-            r.flight.id,
-            r.flight.source,
-            r.flight.destination,
-            r.flight.airfare,
-            r.flight.seat_availability,
-            "Your reservation id is: ",
-            r.id,
-        )
+        print(f"{r}\n")
     except Exception as e:
-        print(e)
+        print(f"Error: {e}\n")
 
 
-def rpc_cancel_flight(app: App):
+def cancel_flight(app: App):
     if len(app.reservations) == 0:
         print("You have no reservations")
         return
 
-    print("Your reserved flights are:\n")
-    idxToReservations = []
-    count = 0
-    for k, v in app.reservations.items():
-        print(f"Reservation [{count}]")
-        print("Flight Id: ", v.flight.id)
-        print("Source: ", v.flight.source)
-        print("Destination: ", v.flight.destination)
-        print("Airfare: ", v.flight.airfare)
-        print("Seats Reserved: ", v.seats_reserved)
-        print("Cancelled: ", v.cancelled)
-        idxToReservations.append(v.id)
-        count += 1
-
+    print("\nReservations:\n")
+    app.print_reservations()
+    idxToReservations = app.reservations_idx()
     idx = -1
     while idx < 0 or idx >= len(idxToReservations):
-        idx = int(input("Enter the plane id you wish to cancel a seat in: "))
+        idx = int(input("Select reservation: "))
 
     try:
-        rf = app.cancel_flight(idxToReservations[idx])
+        rf = app.cancel_flight(idxToReservations[idx].id)
         if not rf:
             return
         f = rf.flight
         print("Reservation cancelled")
     except Exception as e:
-        print(e)
+        print(f"Error: {e}\n")
+
+
+def view_reservations(app: App):
+    if len(app.reservations) == 0:
+        print("\nYou have no reservations\n")
+        return
+    print()
+    app.print_reservations()
+
+
+def add_meal(app: App):
+    if len(app.reservations) == 0:
+        print("You have no reservations")
+        return
+    try:
+        print("Reservations:\n")
+        app.print_reservations()
+        reservations = app.reservations_idx()
+
+        # Get reservations
+        r_idx = -1
+        while r_idx < 0 or r_idx >= len(reservations):
+            r_idx = int(input("Select reservation: "))
+
+        # Get Meals
+        meals = app.get_meals()
+        print("Meals")
+        for i, m in enumerate(meals):
+            print(f"Meal[{i}]\n{m}\n")
+
+        meal_idx = -1
+        while meal_idx < 0 or meal_idx >= len(meals):
+            meal_idx = int(input("Select meal: "))
+
+        # Submit RPC request
+        rf = app.add_meals(reservations[r_idx].id, meals[meal_idx].id)
+        if not rf:
+            return
+        print(rf)
+        print("\nMeal Added\n")
+    except Exception as e:
+        print(f"Error: {e}\n")
+
+
+def monitor_updates(app: App):
+    try:
+        duration = int(input("Monitor updates Duration (minutes): "))
+        app.monitor_updates(duration, blocking=True)
+    except Exception as e:
+        print(f"Error: {e}\n")
 
 
 def print_menu():
     print("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
     print("1: Find Flights")
-    print("2: Reserve Flights")
-    print("3: Cancel Flight")
-    print("4: Start monitoring updates")
-    print("5: stop monitoring updates")
-    print("6: exit")
+    print("2: Find Flight")
+    print("3: Reserve Flights")
+    print("4: Cancel Flight")
+    print("5: Add Meals")
+    print("6: Start monitoring updates")
+    print("7: View reservations")
+    print("8: exit")
     print("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
 
 
+def clientFactory():
+    """Client factory"""
+    d = input("Load default Y/N: ").upper()
+    if d != "N":
+        return App()
+
+    addr = input("Enter remote address: ").split(":")
+    remote = addr[0]
+    port = int(addr[1])
+    return App(remote=remote, port=port)
+
+
 def main():
-    exit = False
-    process_flag = False
-    a = App()
-    while not exit:
+    a = clientFactory()
+    while True:
         try:
             print_menu()
             option = str(input("Enter your choice: "))
             if option == "1":
-                rpc_get_flights(a)
+                find_flights(a)
             elif option == "2":
-                rpc_reserve_flight(a)
+                find_flight(a)
             elif option == "3":
-                rpc_cancel_flight(a)
+                reserve_flight(a)
             elif option == "4":
-                count = 0
-                duration = -1
-                while count < 3:
-                    user_input = input(
-                        "For how long will you want to monitor updates? (in hours and maximum 24 hours)."
-                    )
-                    duration = int(user_input)
-                    if duration > 0 and duration < 24:
-                        break
-                    count += 1
-
-                if count >= 3:
-                    print(
-                        "You have exceeded the number of tries to set the duration!. Default being set to one hour!"
-                    )
-                    duration = 1
-                a.monitor_updates(duration, blocking=True)
+                cancel_flight(a)
             elif option == "5":
-                monitoring.terminate()
-                process_flag = True
+                add_meal(a)
             elif option == "6":
-                print("Stopping monitoring...")
-                print("exiting....")
-                exit = True
-                monitoring.terminate()
-                break
-            else:
-                print("Invalid Option!")
-                continue
+                monitor_updates(a)
+            elif option == "7":
+                view_reservations(a)
+            elif option == "8":
+                return
         except KeyboardInterrupt:
             break
 
 
 if __name__ == "__main__":
-    # IP_ADD = str(input("Enter the ip address: "))
-    # PORT = int(input("Enter the port: "))
     main()

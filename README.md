@@ -1,3 +1,69 @@
+# Quick start
+## Running Golang's server/client with prebuilt binaries
+Prebuilt binaries have been created in the `server/release folder`. 
+Run the appropriate binary for the respective OS
+```
+# macOS
+$ chmod +x ./server/release/flightsystem-macos 
+$ ./server/release/flightsystem-macos -i
+
+# linux
+$ chmod +x ./server/release/flightsystem-ubuntu
+$ ./server/release/flightsystem-ubuntu -i
+
+# windows
+$ ./server/release/flightsystem-ubuntu -i
+```
+
+## Running with docker
+> Note the docker image runs the server in it's default config
+> Running the client on docker is not recommended as you have to somehow pass in stdin
+```
+$ docker build  -t flight-sys .
+$ docker run -p 8080:8080 flight-sys
+```
+
+## Running Golang's server/client from src
+(Installation of golang)[https://go.dev/doc/install]
+### Download dependencies 
+```
+# Download deps
+$ cd server
+$ go mod download
+
+$ make
+# or
+$ go run cmd/main.go -i
+```
+
+## Running Python's client from src
+```
+$ cd client
+
+$ make
+# or
+$ python3 src/main.py
+
+```
+
+# Folder directory
+`client`: Python client implementation of flight system
+`scripts`: Contains scripts that help generate dummy flight data
+  1. `flights.csv` - Generated flight.csv
+  2. `seed_gen.py` - Python script to generate flight data
+   
+`server`: Golang server/client implementation of flight system
+
+# Generate flight data
+> Note the make command generates the `flight.csv` file and outputs to the server
+```
+$ make 
+# or
+$ python3 srcipts/seed_gen.py && mv flights.csv ./server
+```
+
+
+
 # Protocol
 The project utilises UDP as its transport layer where the communication is further decomposed into multiple layers. The byte ordering used is `Little Endian`.
 
@@ -38,20 +104,4 @@ A frame in transmission would have the byte arrangement as such:
 ## Example
 This section depicts a request response between a `client` and `server`
 1. `client` sends a SYNC
-
-# CZ4013 Notes 
-Server: <br>
-1. The information of all flights is stored
-2. Flight class: flight identifier (int), the source and destination places (variable length strings), departure time (own datastructure), airfare (float), seat availability (int)
-
-
-Client: <br>
-1. provides an interface for users to invoke these services. 
-2. On receiving a request input from the user, the client sends the request to the server. 
-3. After receiving the results from the user, the client sends the request to the client. 
-4. The client then presents the results on the console to the user. 
-
-In java, serialization is the synonym of marshalling in Java. Deserialization is the synonym of unmarshalling in Java. <br>
-BUT we cannnot use any existing RMI, RPC, COBRA, Java Object serialization facilities and input/output stream in Java.
-
 

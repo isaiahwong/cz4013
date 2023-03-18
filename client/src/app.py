@@ -2,13 +2,15 @@ import asyncio
 from protocol import Client, Stream
 from queue import Queue, Empty
 from misc import futuretime
-from threading import Thread
+from threading import Thread, Event
 import time
 from flight import Flight, ReserveFlight, Food
-from message import message, ErrorMsg, Message, Error
+from message import Message, Error
 from frame import EOF
 import codec
 import datetime
+import select
+import sys
 
 
 class App:
@@ -21,50 +23,14 @@ class App:
         self.reservations = {}
         self.client = Client(remote, port)
         self.keyEnter = Queue()
+        self.stop_event = Event()
 
-    def on_enter_quit(self):
-        input("\nPress enter to quit..\n")
-        return EOF("")
+    def reservations_idx(self):
+        return [v for k, v in self.reservations.items()]
 
-    def _sendOnly(
-        self, existing: Stream, method: str, query: dict, deadline: int = None
-    ) -> Stream:
-        stream = (
-            self.client.open(deadline)
-            if not existing
-            else self.client.openWithExisting(stream, deadline)
-        )
-        req = Message(rpc=method, query=query)
-        stream.write(codec.marshal(req))
-        return stream
-
-    def _send(self, method: str, query: dict, deadline: int):
-        stream = None
-        msg = None
-
-        def retrySend(existing: Stream):
-            msg = None
-            stream = self._sendOnly(existing, method, query, deadline)
-            try:
-                b = stream.read()
-                msg: Message = codec.unmarshal(b, Message())
-            except EOF as e:
-                pass
-            if msg.error:
-                raise Exception(msg.error)
-            return [stream, msg]
-
-        tries = 0
-        while tries < self.retries:
-            try:
-                stream, msg = retrySend(stream)
-                return [stream, msg]
-            except Exception as e:
-                print(e)
-                print(f"Retrying: {tries}\n")
-                tries += 1
-
-        raise Exception(f"Failed to send {method} after {self.retries} tries")
+    def print_reservations(self):
+        for i, v in enumerate(self.reservations_idx()):
+            print(f"Reservation[{i}]\n{v}\n")
 
     def find_flights(self, source, destination) -> list:
         method = "FindFlights"
@@ -80,7 +46,6 @@ class App:
         )
 
         stream, msg = self._send(method, req.query, self.deadline)
-
         flights = codec.unmarshal(msg.body, [Flight()])
         stream.close()
         return flights
@@ -162,8 +127,8 @@ class App:
         req = Message(
             rpc=method,
             query={
-                "id": id,
-                "meal_id": meal_id,
+                "id": str(id),
+                "meal_id": str(meal_id),
             },
         )
 
@@ -174,27 +139,24 @@ class App:
 
     def monitor_updates(self, duration: int, blocking=True):
         method = "MonitorUpdates"
-        query = {"timestamp": str(int(futuretime(duration * 60 * 60) * 1000))}
-        stream = self._sendOnly(None, method, query, None)
+        query = {"timestamp": str(int(futuretime(duration * 60) * 1000))}
+        stream = self._send_only(None, method, query, None)
 
         def read():
             while not stream.closed:
                 b = None
                 try:
                     b = stream.read()
-                except EOF as e:
-                    return
-                res: Message = codec.unmarshal(b, Message())
-                if res.error:
-                    raise Exception(res.error)
+                    res: Message = codec.unmarshal(b, Message())
+                    if res.error:
+                        raise Exception(res.error)
 
-                flight: Flight = codec.unmarshal(res.body, Flight())
-                print("New Flight")
-                print("Flight Id: ", flight.id)
-                print("Source: ", flight.source)
-                print("Destination: ", flight.destination)
-                print("Airfare: ", flight.airfare)
-                print("Seats Reserved: ", flight.seat_availability)
+                    flight: Flight = codec.unmarshal(res.body, Flight())
+                    print(f"{flight}\n")
+                except EOF as e:
+                    if self.stop_event:
+                        self.stop_event.set()
+                    return
 
         async def async_wrap(fn):
             """Wraps a function in to an async function"""
@@ -208,7 +170,7 @@ class App:
             done, pending = await asyncio.wait(
                 [
                     async_wrap(read),
-                    async_wrap(self.on_enter_quit),
+                    async_wrap(self._on_enter_quit),
                 ],
                 return_when=asyncio.FIRST_COMPLETED,
             )
@@ -221,3 +183,52 @@ class App:
         t = Thread(target=read)
         t.daemon = True
         t.start()
+
+    def _on_enter_quit(self):
+        self.stop_event = Event()
+        print("\nPress enter to quit..\n")
+        while not self.stop_event.is_set():
+            enter_received, _, _ = select.select([sys.stdin], [], [], 1)
+            if enter_received:
+                return EOF("")
+
+        return EOF("")
+
+    def _send_only(
+        self, existing: Stream, method: str, query: dict, deadline: int = None
+    ) -> Stream:
+        stream = (
+            self.client.open(deadline)
+            if not existing
+            else self.client.openWithExisting(stream, deadline)
+        )
+        req = Message(rpc=method, query=query)
+        stream.write(codec.marshal(req))
+        return stream
+
+    def _send(self, method: str, query: dict, deadline: int):
+        stream = None
+        msg = None
+
+        def retrySend(existing: Stream):
+            msg = None
+            stream = self._send_only(existing, method, query, deadline)
+            try:
+                b = stream.read()
+                msg: Message = codec.unmarshal(b, Message())
+            except EOF as e:
+                pass
+            if msg.error:
+                raise Exception(msg.error.error)
+            return [stream, msg]
+
+        tries = 0
+        while tries < self.retries:
+            try:
+                stream, msg = retrySend(stream)
+                return [stream, msg]
+            except TimeoutError as e:
+                print(f"Retrying: {tries}\n")
+                tries += 1
+
+        raise Exception(f"Failed to send {method} after {self.retries} tries")
