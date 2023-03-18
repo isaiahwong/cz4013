@@ -219,7 +219,7 @@ class App:
             except EOF as e:
                 pass
             if msg.error:
-                raise Exception(msg.error.error)
+                raise Exception(f"{msg.error.error}: {msg.error.body}")
             return [stream, msg]
 
         tries = 0
