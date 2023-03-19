@@ -22,7 +22,7 @@ func LoadCSV(file string, list interface{}) error {
 	}
 
 	paths := []string{
-		// filepath.Join(dir, file),
+		filepath.Join(dir, file),
 		filepath.Join(dir, fmt.Sprintf("/server/%v", file)),
 		filepath.Join(dir, fmt.Sprintf("../%v", file)),
 	}
