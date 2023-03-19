@@ -145,7 +145,9 @@ def clientFactory():
 
     addr = input("Enter remote address: ").split(":")
     remote = addr[0]
+    print(remote)
     port = int(addr[1])
+    print(port)
     return App(remote=remote, port=port)
 
 

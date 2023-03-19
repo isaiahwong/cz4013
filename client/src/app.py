@@ -12,8 +12,21 @@ import datetime
 import select
 import sys
 
+
+#Checks if the platform is a windows platform 
 if sys.platform.startswith("win"):
     import msvcrt
+
+'''
+The App Class:
+This class allows the client to invoke the RPCs provided by the server:
+1. FindFlights: Returns available flights when provided with a origin and destination of flight
+2. FindFlight: Returns the available flight when provided with the flight id
+3. ReserveFlight: Reserves seats on a flight if available. Returns an error if seats are not available 
+4. MonitorUpdates: Monitors flight reservations and cancellations
+5. CancelFlights: Cancels a flight reservations
+6. AddMeals: Add meals for a reserved flight 
+'''
 
 
 class App:
