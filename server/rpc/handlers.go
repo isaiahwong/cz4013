@@ -351,10 +351,12 @@ func (r *RPC) MonitorUpdates(addr string, m *Message, read Readable, write Writa
 	}
 
 	// Create channel
+	if _, ok := r.chFlightUpdates[addr]; ok {
+		return r.error(method, ErrInternalError, "Already monitoring", read, write)
+	}
 	r.chFlightUpdatesMux.Lock()
-	index := len(r.chFlightUpdates)
 	fCh := make(chan *Flight)
-	r.chFlightUpdates = append(r.chFlightUpdates, fCh)
+	r.chFlightUpdates[addr] = fCh
 	r.chFlightUpdatesMux.Unlock()
 
 	r.logger.Info("Current Time : ", time.Now().Local().Format(time.RFC3339))
@@ -373,11 +375,7 @@ func (r *RPC) MonitorUpdates(addr string, m *Message, read Readable, write Writa
 			// remove channel
 			r.chFlightUpdatesMux.Lock()
 			// remove via index
-			if index+1 == len(r.chFlightUpdates) {
-				r.chFlightUpdates = []chan *Flight{}
-			} else {
-				r.chFlightUpdates = append(r.chFlightUpdates[:index], r.chFlightUpdates[index+1:]...)
-			}
+			delete(r.chFlightUpdates, addr)
 			r.chFlightUpdatesMux.Unlock()
 			r.logger.Info(fmt.Sprintf("Released: %v", addr))
 			return r.ok(method, []byte{}, lossy, read, write)

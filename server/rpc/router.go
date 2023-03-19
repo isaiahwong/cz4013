@@ -24,7 +24,7 @@ type RPC struct {
 	reserveMux sync.Mutex
 
 	chFlightUpdatesMux sync.Mutex
-	chFlightUpdates    []chan *Flight
+	chFlightUpdates    map[string]chan *Flight
 }
 
 // function to handle the request
@@ -118,6 +118,6 @@ func New(f *FlightRepo, r *ReservationRepo, deadline time.Duration) *RPC {
 		deadline:        deadline,
 		flightRepo:      f,
 		reservationRepo: r,
-		chFlightUpdates: []chan *Flight{},
+		chFlightUpdates: make(map[string]chan *Flight),
 	}
 }
