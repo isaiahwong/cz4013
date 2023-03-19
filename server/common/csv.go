@@ -1,8 +1,10 @@
 package common
 
 import (
+	"bufio"
 	"encoding/csv"
 	"errors"
+	"fmt"
 	"io"
 	"os"
 	"path/filepath"
@@ -19,13 +21,47 @@ func LoadCSV(file string, list interface{}) error {
 		return err
 	}
 
-	// Join the directory and file name
-	absPath := filepath.Join(dir, file)
-
-	csvFile, err := os.Open(absPath)
-	if err != nil {
-		return err
+	paths := []string{
+		// filepath.Join(dir, file),
+		filepath.Join(dir, fmt.Sprintf("/server/%v", file)),
+		filepath.Join(dir, fmt.Sprintf("../%v", file)),
 	}
+	var rerr error
+	var csvFile *os.File
+
+	// read csv fn
+	readCsv := func(path string) (*os.File, error) {
+		return os.Open(path)
+	}
+
+	stdInCsv := func() (*os.File, error) {
+		scanner := bufio.NewScanner(os.Stdin)
+		// Read input from standard input
+		fmt.Print("\nEnter flight.csv location: ")
+		scanner.Scan()
+		path := scanner.Text()
+		return readCsv(path)
+	}
+
+	for _, path := range paths {
+		// Join the directory and file name
+		csvFile, rerr = readCsv(path)
+		if rerr == nil {
+			break
+		}
+	}
+
+	if rerr != nil {
+		fmt.Println("\nAttempted to open file from these directories: ")
+		for _, path := range paths {
+			fmt.Println(path)
+		}
+		csvFile, rerr = stdInCsv()
+		if rerr != nil {
+			return rerr
+		}
+	}
+
 	defer csvFile.Close()
 
 	// Create a new CSV reader
