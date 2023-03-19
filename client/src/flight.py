@@ -1,15 +1,21 @@
 import time
 
-
+"""
+In this project, there are three main objects to consider:
+1. Flight 
+2. Food
+3. Reserve Flight 
+This python3 file declares these three as classes and with their respective attributes
+"""
 class Flight:
     def __init__(
         self,
-        id: int = 0,
-        source: str = "",
-        destination: str = "",
-        airfare: float = 0.0,
-        seat_availability: int = 0,
-        timestamp: int = time.time() * 1000,
+        id: int = 0, # The Unique ID of the flight
+        source: str = "", # The origin of the flight
+        destination: str = "", # The destination of the flight
+        airfare: float = 0.0, # The cost of the flight
+        seat_availability: int = 0, # The number of seats available
+        timestamp: int = time.time() * 1000, # The time of departure
     ):
         self.id = id
         self.source = source
@@ -25,8 +31,8 @@ class Flight:
 class Food:
     def __init__(
         self,
-        id: int = 0,
-        name: str = "",
+        id: int = 0, # The unique ID of the food 
+        name: str = "", # The name of the food 
     ):
         self.id = id
         self.name = name
@@ -39,11 +45,11 @@ class ReserveFlight:
     def __init__(
         self,
         id: str = "",
-        flight: Flight = Flight(),
-        seats_reserved: int = 0,
-        check_in: bool = False,
-        cancelled: bool = False,
-        meals: list = [Food()],
+        flight: Flight = Flight(), # Flight object 
+        seats_reserved: int = 0, # The number of seats reserved by the user using the client
+        check_in: bool = False, # Whether the user using the client has checked in
+        cancelled: bool = False, # Whether the reserved seat has been cancelled or not 
+        meals: list = [Food()], # The list of foods the user using the client has pre orders for the flight
     ):
         self.id = id
         self.flight = flight
