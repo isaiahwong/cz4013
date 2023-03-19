@@ -373,7 +373,7 @@ func (r *RPC) MonitorUpdates(addr string, m *Message, read Readable, write Writa
 			// remove channel
 			r.chFlightUpdatesMux.Lock()
 			// remove via index
-			if len(r.chFlightUpdates) == 1 {
+			if index+1 == len(r.chFlightUpdates) {
 				r.chFlightUpdates = []chan *Flight{}
 			} else {
 				r.chFlightUpdates = append(r.chFlightUpdates[:index], r.chFlightUpdates[index+1:]...)
