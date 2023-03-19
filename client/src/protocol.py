@@ -141,6 +141,7 @@ class Session:
         """client implementation of recv only.
         Does not handle SYN.
         """
+        self.sock.bind(("0.0.0.0", 0))
 
         def loop():
             while True:

@@ -12,6 +12,9 @@ import datetime
 import select
 import sys
 
+if sys.platform.startswith("win"):
+    import msvcrt
+
 
 class App:
     def __init__(self, remote="127.0.0.1", port=8080, retries=2, deadline=1, mtu=1500):
@@ -187,8 +190,13 @@ class App:
     def _on_enter_quit(self):
         self.stop_event = Event()
         print("\nPress enter to quit..\n")
+        enter_received = False
         while not self.stop_event.is_set():
-            enter_received, _, _ = select.select([sys.stdin], [], [], 1)
+            if sys.platform.startswith("win"):
+                enter_received = True if msvcrt.kbhit() else False
+            else:
+                enter_received, _, _ = select.select([sys.stdin], [], [], 1)
+
             if enter_received:
                 return EOF("")
 
