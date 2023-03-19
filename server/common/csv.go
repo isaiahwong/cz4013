@@ -5,6 +5,7 @@ import (
 	"errors"
 	"io"
 	"os"
+	"path/filepath"
 	"reflect"
 )
 
@@ -13,7 +14,15 @@ type CSVParser interface {
 }
 
 func LoadCSV(file string, list interface{}) error {
-	csvFile, err := os.Open(file)
+	dir, err := os.Getwd()
+	if err != nil {
+		return err
+	}
+
+	// Join the directory and file name
+	absPath := filepath.Join(dir, file)
+
+	csvFile, err := os.Open(absPath)
 	if err != nil {
 		return err
 	}
