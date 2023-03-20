@@ -10,11 +10,11 @@ class EOF(Exception):
 """ Flags for transmission """
 class Flag(Enum):
     """
-    SYN: Synchronization flag
-    PSH: pushing data immediately instead of waiting
-    DNE: Acknowledgement flag
+    SYN: Synchronization flag for start of stream
+    PSH: Sends Data
+    DNE: End of partitioned frame
     NOP: No Operation
-    FIN: Finish
+    FIN: Finish ; terminates end of stream
     """
     SYN = 0
     PSH = 1

@@ -144,10 +144,8 @@ class Stream:
 The session class maintains the UDP connection and streams a the top level. 
 The session maintains a hash-map of streams where it takes a SID, RID pair as the key corresponding to the stream.
 the session does the following functions:
-1. Maintains an asynchronous listener that listens on a socket (UDP) for incoming stream requests
-2. Multiplexes the stream via threads
-3. Sends its response via the corresponding stream. 
-4. In the context of a client, the session creates a single stream and connects to the remote server where it can send its request
+1. Creates a single stream 
+2. Connects to the remote server where it can send its request
 """
 class Session:
     def __init__(self, sock: socket.socket, target: tuple):
