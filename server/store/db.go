@@ -39,6 +39,7 @@ func (db *DB) CreateRelation(relation string, t reflect.Type) error {
 	return nil
 }
 
+// Insert inserts a tuple in a relation
 func (db *DB) Insert(relation string, tuple interface{}) error {
 	db.relationMux.Lock()
 	defer db.relationMux.Unlock()
@@ -83,6 +84,7 @@ func (db *DB) Update(relation string, tuple interface{}, predicate func(old inte
 	return nil
 }
 
+// Deletes a tuple in a relation
 func (db *DB) Delete(relation string, predicate func(v interface{}) bool) error {
 	db.relationMux.Lock()
 	defer db.relationMux.Unlock()

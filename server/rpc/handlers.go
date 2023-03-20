@@ -155,8 +155,6 @@ func (r *RPC) ReserveFlight(m *Message, read Readable, write Writable) error {
 		return r.error(method, ErrFailToReserve, err.Error(), read, write)
 	}
 
-	fmt.Println(reserve)
-
 	r.broadcastFlights(flight)
 
 	b, err := encoding.Marshal(reserve)

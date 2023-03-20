@@ -1,2 +1,2 @@
 default:
-	python3 srcipts/seed_gen.py && mv flights.csv ./server
+	python3 scripts/seed_gen.py && mv flights.csv ./server
