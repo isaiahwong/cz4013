@@ -11,25 +11,30 @@ class Encoder:
         self.out = bytearray()
 
     # Encodes a boolean variable 
+    # < means little-endian ? means boolean
     def write_bool(self, b: bool):
         self.out.extend(struct.pack("<?", 1 if b else 0))
 
     # Encodes a string variable
+    # < means little-endian s means string
     def write_string(self, s: str):
         self.write_int32(len(s))
         self.out.extend(struct.pack(f"<{len(s)}s", s.encode("utf-8")))
 
     # Encodes an integer variable
+    # < means little-endian i means int
     def write_int(self, i: int):
         self.out.extend(struct.pack("<i", i))
 
 
     # Encodes a 32 bit integer variable
+    # < means little-endian i means int
     def write_int32(self, i: int):
         self.out.extend(struct.pack("<i", int(i)))
 
 
     # Encodes a 64 bit integer variable
+    # < means little-endian q means int64
     def write_int64(self, i: int):
         self.out.extend(
             struct.pack("<q", int(i))
@@ -48,18 +53,22 @@ class Encoder:
 
 
     # Encodes an unsigned 32 bit integer
+    # < means little-endian I means unsigned int32
     def write_uint32(self, i: int):
         self.out.extend(struct.pack("<I", i))
 
     # Encodes an unsigned 64 bit integer
+    # < means little-endian Q means unsigned int64
     def write_uint64(self, i: int):
         self.out.extend(struct.pack("<Q", i))
 
     # Encodes a 32 bit float variable
+    # < means little-endian f means float32
     def write_float32(self, i: float):
         self.out.extend(struct.pack("<f", i))
 
     # Encodes a 64 bit float variable 
+    # < means little-endian d means float32
     def write_float64(self, i: float):
         self.out.extend(struct.pack("<d", i))
 
@@ -85,6 +94,7 @@ class Decoder:
         self.buffer_reader: BufferReader = BufferReader(data)
 
     # Decoding a boolean variable 
+    # < means little-endian ? means boolean
     def read_bool(self) -> bool:
         a = self.buffer_reader.read(1)
         return struct.unpack("<?", a)[0]
@@ -95,6 +105,7 @@ class Decoder:
 
 
     # Decoding a string variable 
+    # < means little-endian s means string
     def read_string(self) -> str:
         l = self.read_int32()
         b = self.buffer_reader.read(l)
@@ -102,18 +113,21 @@ class Decoder:
 
 
     # Decoding an integer variable
+    # < means little-endian i means int
     def read_int(self):
         b = self.buffer_reader.read(4)
         return struct.unpack("<i", b)[0]
 
 
     # Decoding a 32 bit integer
+    # < means little-endian i means int
     def read_int32(self):
         b = self.buffer_reader.read(4)
         return struct.unpack("<i", b)[0]
 
 
-    # Decoding a 64 bit integer 
+    # Decoding a 64 bit integer
+    # < means little-endian q means int64 
     def read_int64(self):
         b = self.buffer_reader.read(8)
         return struct.unpack("<q", b)[0]
@@ -126,23 +140,27 @@ class Decoder:
 
 
     # Decoding an unsigned 32 bit integer
+    # < means little-endian I means unsigned int32
     def read_uint32(self):
         b = self.buffer_reader.read(4)
         return struct.unpack("<I", b)[0]
 
 
     # Decoding an unsigned 64 bit integer
+    # < means little-endian Q means unsigned int64
     def read_uint64(self):
         b = self.buffer_reader.read(8)
         return struct.unpack("<Q", b)[0]
 
     # Decoding a 32 bit float 
+    # < means little-endian f means float32
     def read_float32(self):
         b = self.buffer_reader.read(4)
         return struct.unpack("<f", b)[0]
 
 
     #Decoding a 64 bit float 
+    # < means little-endian d means float32
     def read_float64(self):
         self.out.extend(struct.pack("<d", i))
         return struct.unpack("<d", b)[0]

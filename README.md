@@ -12,7 +12,7 @@ $ chmod +x ./server/release/flightsystem-ubuntu
 $ ./server/release/flightsystem-ubuntu -i
 
 # windows
-$ ./server/release/flightsystem-ubuntu -i
+$ ./server/release/flightsystem-windows.exe
 ```
 
 ## Running with docker

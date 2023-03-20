@@ -6,6 +6,7 @@ In this project, there are three main objects to consider:
 2. Food
 3. Reserve Flight 
 This python3 file declares these three as classes and with their respective attributes
+When the RPC is called, it can return any of these three object types 
 """
 class Flight:
     def __init__(

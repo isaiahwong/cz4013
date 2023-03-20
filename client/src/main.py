@@ -7,10 +7,13 @@ import datetime
 from misc import futuretime
 from app import App
 
-# from threading import Thread, Event
+# from threading import Process, Event
 from multiprocessing import Process, Event
 
-# Done with addition of error checking
+"""
+A function that uses the App object to call the FindFlights RPC.
+It also provides a Command Line Interface with error checking. 
+"""
 def find_flights(app: App):
     source = str(input("Enter Origin of Flight: "))
     destination = str(input("Enter Destination of Flight: "))
@@ -31,7 +34,10 @@ def find_flights(app: App):
     except Exception as e:
         print(f"Error: {e}\n")
 
-
+"""
+A function that uses the App object to call the FindFlight RPC.
+It also provides a Command Line Interface with error checking. 
+"""
 def find_flight(app: App):
     id = str(input("Enter Flight id: "))
 
@@ -42,6 +48,10 @@ def find_flight(app: App):
         print(f"Error: {e}\n")
 
 
+"""
+A function that uses the App object to call the ReserveFlight RPC.
+It also provides a Command Line Interface with error checking. 
+"""
 def reserve_flight(app: App):
     flightid = input("\nEnter Flight id: ")
     seats = input("\nEnter number of seats: ")
@@ -51,7 +61,10 @@ def reserve_flight(app: App):
     except Exception as e:
         print(f"Error: {e}\n")
 
-
+"""
+A function that uses the App object to call the CancelFlight RPC.
+It also provides a Command Line Interface with error checking. 
+"""
 def cancel_flight(app: App):
     if len(app.reservations) == 0:
         print("You have no reservations")
@@ -73,7 +86,10 @@ def cancel_flight(app: App):
     except Exception as e:
         print(f"Error: {e}\n")
 
-
+"""
+A function that allows the client to view current reservations.
+It also provides a Command Line Interface with error checking. 
+"""
 def view_reservations(app: App):
     if len(app.reservations) == 0:
         print("\nYou have no reservations\n")
@@ -81,7 +97,10 @@ def view_reservations(app: App):
     print()
     app.print_reservations()
 
-
+"""
+A function that uses the App object to call the AddMeals RPC.
+It also provides a Command Line Interface with error checking. 
+"""
 def add_meal(app: App):
     if len(app.reservations) == 0:
         print("You have no reservations")
@@ -115,7 +134,10 @@ def add_meal(app: App):
     except Exception as e:
         print(f"Error: {e}\n")
 
-
+"""
+A function that uses the App object to call the MonitorUpdates RPC.
+It also provides a Command Line Interface with error checking. 
+"""
 def monitor_updates(app: App):
     try:
         duration = int(input("Monitor updates Duration (minutes): "))
@@ -123,7 +145,10 @@ def monitor_updates(app: App):
     except Exception as e:
         print(f"Error: {e}\n")
 
-
+"""
+A function that prints out what the client can do. 
+It also provides a Command Line Interface with error checking. 
+"""
 def print_menu():
     print("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
     print("1: Find Flights")
@@ -137,6 +162,13 @@ def print_menu():
     print("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
 
 
+"""
+A function that allows the client to use default IP address and Port OR set their own.
+Default IP is 127.0.0.1 (localhost) and default port is 8080. 
+If you wish to set your own IP and Port, you can enter IP:Port
+e.g. 192.168.8.12:2222 
+It also provides a Command Line Interface with error checking. 
+"""
 def clientFactory():
     """Client factory"""
     d = input("Load default Y/N: ").upper()
@@ -150,7 +182,16 @@ def clientFactory():
     print(port)
     return App(remote=remote, port=port)
 
-
+""" The Main function that runs a while loop such that the client can choose any of the following options:
+1. FindFlights RPC
+2. FindFight RPC
+3. ReserveFlight RPC
+4. CancelFlight RPC
+5. AddMeal RPC
+6. MonitorUpdates RPC
+7. View current reservations
+8. exit 
+"""
 def main():
     a = clientFactory()
     while True:

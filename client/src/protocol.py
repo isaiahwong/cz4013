@@ -6,6 +6,13 @@ import uuid
 from threading import Thread, Lock
 from queue import Queue, Empty
 
+"""
+The stream class provides an active connection between two entities where frames are exchanged 
+continuously during its lifetime.
+A stream transmits frames where the flags determine the state of a request/response between entities. 
+Reordering of frames happens at the stream level. Once a client establishes a stream with a server, 
+both entities can exchange frames without a disjoint connection.
+"""
 
 class Stream:
     def __init__(self, sess, sid, rid, maxFrameSize, deadline):
@@ -32,6 +39,7 @@ class Stream:
     def notifyClose(self):
         self.closeEvent.put(True, block=True)
 
+    # If a deadline is provided, set the deadline
     def setDeadline(self, deadline: int = 0):
         def runnable():
             start_time = time.time()
@@ -43,10 +51,12 @@ class Stream:
         t.daemon = True
         t.start()
 
+    # Write to the server 
     def write(self, data=bytearray()):
         bts = data
         seqid = 0
-        frame = Frame(Flag.PSH, self.sid, self.rid, seqid, data)  # create the frame
+        # create the frame by creating a Frame Object 
+        frame = Frame(Flag.PSH, self.sid, self.rid, seqid, data)  
         while len(bts) > 0:
             size = len(bts)
             if size > self.maxFrameSize:
@@ -58,6 +68,7 @@ class Stream:
             seqid += 1
         self.session.writeFrame(frame=Frame(Flag.DNE, self.sid, self.rid, 0))
 
+    # Read from the server and calls the readIndefinitely function
     def read(self):
         dataBuffer = bytearray()
         res = self.readIndefinitely()
@@ -67,6 +78,7 @@ class Stream:
 
         return dataBuffer
 
+    # Read with a deadline and timeout. If nothing is received within the deadline, yield cpu
     def readWait(self):
         while True:
             if self.deadline:
@@ -94,6 +106,8 @@ class Stream:
                 pass
             time.sleep(1 / 1000)  # yield cpu
 
+
+    # If there is no deadline set, read from the server indefinitely
     def readIndefinitely(self):
         res = []
         if self.deadline != None:
@@ -119,12 +133,22 @@ class Stream:
 
         return res
 
+    # Close the stream 
     def close(self):
         self.notifyClose()
         self.closed = True
         self.session.writeFrame(frame=Frame(Flag.FIN, self.sid, self.rid, 0))
 
 
+"""
+The session class maintains the UDP connection and streams a the top level. 
+The session maintains a hash-map of streams where it takes a SID, RID pair as the key corresponding to the stream.
+the session does the following functions:
+1. Maintains an asynchronous listener that listens on a socket (UDP) for incoming stream requests
+2. Multiplexes the stream via threads
+3. Sends its response via the corresponding stream. 
+4. In the context of a client, the session creates a single stream and connects to the remote server where it can send its request
+"""
 class Session:
     def __init__(self, sock: socket.socket, target: tuple):
         self.sock = sock
@@ -137,12 +161,15 @@ class Session:
         self.read_thread.daemon = True
         self.read_thread.start()
 
+    """
+    client implementation of recv only.
+    Does not handle SYN.
+    """
     def recv(self):
-        """client implementation of recv only.
-        Does not handle SYN.
-        """
+        
         self.sock.bind(("0.0.0.0", 0))
-
+        
+        # To keep reading from the server 
         def loop():
             while True:
                 d, addr = self.sock.recvfrom(self.mtu)
@@ -182,9 +209,12 @@ class Session:
         except Exception as e:
             print(e)
 
+    # Returns the streamKey sid and rid 
     def streamKey(self, sid: bytes, rid: int):
         return str(f"{str(sid)}{rid}")
 
+
+    # Open a session with the existing stream with a deadline
     def openWithExisting(self, stream: Stream, deadline: int):
         sid = stream.sid
         # calling the writeframe function to send synchronization
@@ -198,6 +228,7 @@ class Session:
         self.mutex.release()
         return stream
 
+    # Open a new session 
     def open(self, deadline: int = None):
         sid = uuid.uuid4().bytes[:16]
         # calling the writeframe function to send synchronization
@@ -212,24 +243,33 @@ class Session:
 
         return stream
 
+    # Write a frame to the server 
     def writeFrame(self, frame: Frame, deadline: int = 0):
         self.sock.sendto(frame.buffer, self.target)
 
 
+
+"""
+The client class keeps track of the address and port of the server
+"""
 class Client:
     def __init__(self, addr: str, port: int = 8080):
         self.addr = addr
         self.port = port
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        # to reuse ip address to prevent timeout
         self.sock.setsockopt(
             socket.SOL_SOCKET, socket.SO_REUSEADDR, 1
-        )  # to reuse ip address cuz of the timeout issue but can we do this for udp?
+        )  
+        # call the session class
         self.session = Session(
             sock=self.sock, target=(addr, port)
-        )  # call the session class
+        )  
 
+    # Open a new session 
     def open(self, deadline: int = None):
         return self.session.open(deadline=deadline)
 
+    # Open a session with the existing stream
     def openWithExisting(self, stream: Stream, deadline: int = None):
         return self.session.openWithExisting(stream=stream, deadline=deadline)

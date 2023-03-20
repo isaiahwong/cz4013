@@ -22,7 +22,7 @@ The App Class:
 This class allows the client to invoke the RPCs provided by the server:
 1. FindFlights: Returns available flights when provided with a origin and destination of flight
 2. FindFlight: Returns the available flight when provided with the flight id
-3. ReserveFlight: Reserves seats on a flight if available. Returns an error if seats are not available 
+3. ReserveFlight: Reserves a desired number of seats on a flight if available. Returns an error if seats are not available 
 4. MonitorUpdates: Monitors flight reservations and cancellations
 5. CancelFlights: Cancels a flight reservations
 6. AddMeals: Add meals for a reserved flight 
@@ -41,13 +41,16 @@ class App:
         self.keyEnter = Queue()
         self.stop_event = Event()
 
+    """ Helper function to return all the reservation ids  """
     def reservations_idx(self):
         return [v for k, v in self.reservations.items()]
 
+    """ Helper function to print all the reservation ids """
     def print_reservations(self):
         for i, v in enumerate(self.reservations_idx()):
             print(f"Reservation[{i}]\n{v}\n")
 
+    """ A function to call the FindFlights RPC and simply return the flights """
     def find_flights(self, source, destination) -> list:
         method = "FindFlights"
         stream = None
@@ -66,6 +69,8 @@ class App:
         stream.close()
         return flights
 
+
+    """ A function to call the FindFlight RPC and simple return the flight (unique) """
     def find_flight(self, id: str) -> Flight:
         method = "FindFlight"
         stream = None
@@ -83,6 +88,7 @@ class App:
         stream.close()
         return flight
 
+    """ A function to call the ReserveFlight RPC and returns the reserved Flight and ID """
     def reserve_flight(self, id: str, seats: str) -> ReserveFlight:
         method = "ReserveFlight"
         stream = None
@@ -102,6 +108,7 @@ class App:
         stream.close()
         return r
 
+    """ A function to call the CancelFlight RPC and returns the reserved Flight """
     def cancel_flight(self, id: str) -> ReserveFlight:
         if len(self.reservations) == 0:
             return None
@@ -126,6 +133,7 @@ class App:
         stream.close()
         return r
 
+    """ A function that calls the GetMeals RPC and returns the Food available on that flight """
     def get_meals(self):
         method = "GetMeals"
 
@@ -138,6 +146,7 @@ class App:
         stream.close()
         return f
 
+    """ A function that calls the AddMeals RPC and returns the reserved Flight in which the meal is booked """
     def add_meals(self, id: str, meal_id: str):
         method = "AddMeals"
         req = Message(
@@ -153,6 +162,8 @@ class App:
         stream.close()
         return rf
 
+
+    """ A function that calls the MonitorUpdates RPC and shows any changes to reserved flights """
     def monitor_updates(self, duration: int, blocking=True):
         method = "MonitorUpdates"
         query = {"timestamp": str(int(futuretime(duration * 60) * 1000))}
