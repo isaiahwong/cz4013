@@ -13,6 +13,7 @@ type Encoder struct {
 	out io.Writer
 }
 
+// Marshal encodes the value v into a byte slice stream.
 func Marshal(v interface{}) ([]byte, error) {
 	e := newEncoder()
 	err := e.marshal(v)
@@ -38,6 +39,7 @@ func newEncoder() *Encoder {
 	}
 }
 
+// marshal encodes the value v into the buffer.
 func (e *Encoder) marshal(v interface{}) error {
 	c, err := GetCodec(v)
 	if err != nil {
@@ -123,8 +125,7 @@ func (e *Encoder) writeUint64(n uint64) error {
 	return nil
 }
 
-// writeFloat32 serializes float32.
-// IEEE 754 standard. Assumes float is a finite number
+// writeFloat32 serializes float32. IEEE 754 standard. Assumes float is a finite number
 func (e *Encoder) writeFloat32(f float32) error {
 	bits := math.Float32bits(f)
 	// We only need 4 bytes for 32
@@ -133,8 +134,7 @@ func (e *Encoder) writeFloat32(f float32) error {
 	return binary.Write(e.out, binary.LittleEndian, buf)
 }
 
-// writeFloat64 serializes float64 or double.
-// IEEE 754 standard. Assumes float is a finite number
+// writeFloat64 serializes float64 or double. IEEE 754 standard. Assumes float is a finite number
 func (e *Encoder) writeFloat64(f float64) error {
 	bits := math.Float64bits(f)
 	// We only need 4 bytes for 32

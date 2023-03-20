@@ -9,7 +9,7 @@ ID,Source,Destination,Timestamp,Airfare,Seat Availability
 4147,San Diego,Dallas,1679881939,285,54
 7615,Los Angeles,Dallas,1680072739,560,44
 2679,New York,Houston,1682898739,120,0
-9138,San Jose,San Diego,1683647539,776,93
+9138,San Jose,San Diego,1683647539,776,0
 5764,Phoenix,San Diego,1682124739,976,43
 8263,Houston,New York,1680749539,265,70
 5276,San Antonio,San Jose,1682488339,163,69

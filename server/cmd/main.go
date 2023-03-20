@@ -59,7 +59,7 @@ func main() {
 	flag.BoolVar(&interactive, "i", false, "Enables interactive mode. Other options will be ignored when interactive mode is enabled.")
 	flag.BoolVar(&client, "c", false, "Run client")
 	flag.IntVar(&deadline, "deadline", 5, "Deadline of a request response in seconds")
-	flag.IntVar(&semantics, "semantic", 1, "[Server] Semantics of server. 0: AtLeastOnce, 1: AtMostOnce")
+	flag.IntVar(&semantics, "semantic", 0, "[Server] Semantics of server. 0: AtLeastOnce, 1: AtMostOnce")
 	flag.StringVar(&port, "port", "8080", "[Server] Server's port")
 	flag.IntVar(&lossRate, "loss", 0, "[Server] Server's loss rate")
 
