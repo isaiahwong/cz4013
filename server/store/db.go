@@ -6,11 +6,13 @@ import (
 	"sync"
 )
 
+// Relation represents a mock relation DB
 type Relation struct {
 	T      reflect.Type
 	Tuples interface{}
 }
 
+// DB represents a mock DB
 type DB struct {
 	relationMux sync.Mutex
 	Relation    map[string]*Relation
@@ -59,6 +61,7 @@ func (db *DB) Insert(relation string, tuple interface{}) error {
 	return nil
 }
 
+// Update updates a tuple in a relation
 func (db *DB) Update(relation string, tuple interface{}, predicate func(old interface{}, new interface{}) bool) error {
 	db.relationMux.Lock()
 	defer db.relationMux.Unlock()
