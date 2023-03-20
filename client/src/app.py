@@ -159,6 +159,7 @@ class App:
 
         stream, msg = self._send(method, req.query, self.deadline)
         rf = codec.unmarshal(msg.body, ReserveFlight())
+        self.reservations[rf.id] = rf
         stream.close()
         return rf
 

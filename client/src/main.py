@@ -75,6 +75,7 @@ def cancel_flight(app: App):
     idxToReservations = app.reservations_idx()
     idx = -1
     while idx < 0 or idx >= len(idxToReservations):
+        print("Input the reservation number from 0 to ", len(idxToReservations)-1)
         idx = int(input("Select reservation: "))
 
     try:
@@ -123,6 +124,7 @@ def add_meal(app: App):
 
         meal_idx = -1
         while meal_idx < 0 or meal_idx >= len(meals):
+            print("Please select the meal number from 0 to ", len(meals)-1)
             meal_idx = int(input("Select meal: "))
 
         # Submit RPC request
