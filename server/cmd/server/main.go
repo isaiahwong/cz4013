@@ -26,13 +26,15 @@ func init() {
 	if err := common.LoadCSV("flights.csv", &flights); err != nil {
 		panic(err)
 	}
+	// Create a new db
 	db = store.New()
 	fType := new(rpc.Flight)
 	rType := new(rpc.ReserveFlight)
-
+	// Create new data repositories
 	flightRepo = rpc.NewFlightRepo(db)
 	reservationRepo = rpc.NewReservationRepo(db)
 
+	// Create respective relations
 	if err := db.CreateRelation(flightRepo.Relation, reflect.TypeOf(fType)); err != nil {
 		panic(err)
 	}
@@ -44,18 +46,9 @@ func init() {
 	}
 
 	logger = logrus.New()
-	// logrus.Trace()
-	// file, err := os.OpenFile("./logs/server.log", os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0666)
-	// if err != nil {
-	// 	logger.Fatal(err)
-	// }
-	// // Create a multi-writer that writes to both the console and the file
-	// writer := io.MultiWriter(os.Stdout, file)
-
-	// // Set the logger's output to the multi-writer
-	// logger.SetOutput(writer)
 }
 
+// New creates a new server with the specified parameters
 func New(semantic int, deadline int, lossRate int, port string) *protocol.Server {
 	return protocol.New(
 		protocol.WithSemantic(protocol.IntToSemantics(semantic)),
@@ -68,6 +61,7 @@ func New(semantic int, deadline int, lossRate int, port string) *protocol.Server
 	)
 }
 
+// handleInterrupt handles the interrupt keyboard interrupts
 func handleInterrupt(err error) error {
 	if err == promptui.ErrInterrupt {
 		fmt.Println("Goodbye")
@@ -76,6 +70,7 @@ func handleInterrupt(err error) error {
 	return err
 }
 
+// prompt provides an interactive prompt to configure the server
 func prompt() *protocol.Server {
 	loadDefault := "Load default config"
 	customConfig := "Custom config"

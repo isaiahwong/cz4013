@@ -34,16 +34,19 @@ func prompt() {
 	}
 }
 
+// runClient starts the client
 func runClient() {
 	flight_client.Start()
 }
 
+// runServer starts the server with the specified parameters
 func runServer(deadline int, semantics int, port string, lossRate int) {
 	s := server.New(semantics, deadline, lossRate, port)
 	s.Serve()
 }
 
 // Entry point to application. Parses command line arguments and starts server or client
+// The default mode if no flags are parsed are to run the server in AtMostOnce
 func main() {
 	var interactive bool
 	var semantics int
@@ -51,8 +54,6 @@ func main() {
 	var lossRate int
 	var port string
 	var client bool
-	// var address string
-	// var retries int
 
 	// Setup command line arguments
 	flag.BoolVar(&interactive, "i", false, "Enables interactive mode. Other options will be ignored when interactive mode is enabled.")
@@ -62,23 +63,23 @@ func main() {
 	flag.StringVar(&port, "port", "8080", "[Server] Server's port")
 	flag.IntVar(&lossRate, "loss", 0, "[Server] Server's loss rate")
 
-	// flag.IntVar(&retries, "retries", 5, "[Client] Client retries when requests fails")
-	// flag.StringVar(&address, "remote", "localhost:8080", "[Client] Remote address for client")
-
 	flag.Usage = func() {
 		flag.PrintDefaults()
 	}
 	flag.Parse()
 
+	// Start application in interactive mode if specified from prompt
 	if interactive {
 		prompt()
 		return
 	}
 
+	// Starts application in client mode if specified from prompt
 	if client {
 		runClient()
 		return
 	}
 
+	// Default runs to server
 	runServer(deadline, semantics, port, lossRate)
 }

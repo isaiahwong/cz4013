@@ -24,7 +24,7 @@ $ docker run -p 8080:8080 flight-sys
 ```
 
 ## Running Golang's server/client from src
-(Installation of golang)[https://go.dev/doc/install]
+[Installation of golang](https://go.dev/doc/install)
 ### Download dependencies 
 ```
 # Download deps
@@ -52,7 +52,8 @@ $ python3 src/main.py
   1. `flights.csv` - Generated flight.csv
   2. `seed_gen.py` - Python script to generate flight data
    
-`server`: Golang server/client implementation of flight system
+`server`: Golang server and client implementation of flight system
+  - Refer to the server's readme for more details
 
 # Generate flight data
 > Note the make command generates the `flight.csv` file and outputs to the server

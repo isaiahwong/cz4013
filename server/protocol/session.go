@@ -63,11 +63,13 @@ type Session struct {
 	protoErrorOnce sync.Once
 }
 
+// writeRequest frame channel pair
 type writeRequest struct {
 	frame  Frame
 	result chan writeResult
 }
 
+// writeResult n written error pair
 type writeResult struct {
 	n   int
 	err error
@@ -92,17 +94,21 @@ func NewSession(conn *net.UDPConn, client bool) *Session {
 	return s
 }
 
+// Start starts the session that listens for incoming frames
+// and outgoing frames in the background
 func (s *Session) Start() {
 	go s.recv()
 	go s.send()
 }
 
+// Close closes the session and all streams
 func (s *Session) Close() error {
 	var once bool
 	close(s.chDie)
 
 	if once {
 		s.streamLock.Lock()
+		// Close all streams
 		for k := range s.streams {
 			s.streams[k].sessionClose()
 		}
@@ -127,6 +133,8 @@ func (s *Session) Accept() (*Stream, error) {
 	}
 }
 
+// OpenWithExisting opens a new stream with an existing stream sid
+// Note: A new stream is created with a monotonic increasing rid
 func (s *Session) OpenWithExisting(addr *net.UDPAddr, old *Stream) (*Stream, error) {
 	if s.IsClosed() {
 		return nil, io.ErrClosedPipe
@@ -135,6 +143,7 @@ func (s *Session) OpenWithExisting(addr *net.UDPAddr, old *Stream) (*Stream, err
 	return s.open(stream)
 }
 
+// Open opens a new stream that generates a new SID
 func (s *Session) Open(addr *net.UDPAddr) (*Stream, error) {
 	if s.IsClosed() {
 		return nil, io.ErrClosedPipe
@@ -145,6 +154,7 @@ func (s *Session) Open(addr *net.UDPAddr) (*Stream, error) {
 	return s.open(stream)
 }
 
+// open
 func (s *Session) open(stream *Stream) (*Stream, error) {
 	if _, err := s.writeFrame(NewFrame(SYN, stream.sid, stream.rid, 0), time.After(OpenCloseTimeout)); err != nil {
 		return nil, err
