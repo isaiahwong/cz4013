@@ -341,8 +341,7 @@ func (a *App) ViewReservations() {
 
 	w := tabwriter.NewWriter(os.Stdout, 0, 8, 4, ' ', tabwriter.TabIndent)
 	common.PrintTitle("Reservations")
-	for i, v := range a.c.Reservations {
-		fmt.Println(fmt.Sprintf("\nReservation [%v]", i))
+	for _, v := range a.c.Reservations {
 		fmt.Fprintln(w, v.String())
 		fmt.Fprintln(w, "Meal Details")
 		for _, meal := range v.Meals {

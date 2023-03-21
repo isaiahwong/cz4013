@@ -12,6 +12,10 @@ import (
 	"github.com/isaiahwong/cz4013/rpc"
 )
 
+type Placeholder struct {
+	Time time.Time
+}
+
 // FindFlights is a rpc method that finds flights by source and destination
 func (c *Client) FindFlights(source string, destination string) ([]*rpc.Flight, error) {
 	method := "FindFlights"
@@ -207,7 +211,7 @@ func (c *Client) CancelFlight(id string) (*rpc.ReserveFlight, error) {
 
 // MonitorUpdates is a rpc method that monitors updates for a duration.
 // The method is a blocking call
-func (c *Client) MonitorUpdates(duration time.Duration, interruptCh chan struct{}) error {
+func (c *Client) MonitorUpdates(duration time.Duration, interruptCh chan Placeholder) error {
 	method := "MonitorUpdates"
 	// Open a new stream
 	stream, err := c.open()
@@ -254,7 +258,6 @@ func (c *Client) MonitorUpdates(duration time.Duration, interruptCh chan struct{
 
 	// Listen on goroutine
 	go read()
-
 	for !stream.IsClosed() {
 		var body []byte
 		select {
@@ -276,7 +279,6 @@ func (c *Client) MonitorUpdates(duration time.Duration, interruptCh chan struct{
 		fmt.Println("Flight")
 		fmt.Fprintln(w, flight.String())
 	}
-
 	c.logger.Info("Monitor ended")
 	return nil
 }

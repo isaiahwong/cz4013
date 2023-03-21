@@ -22,7 +22,12 @@ type RPC struct {
 	reservationRepo *ReservationRepo
 
 	chFlightUpdatesMux sync.Mutex
-	chFlightUpdates    map[string]chan *Flight
+	chFlightUpdates    map[string]chan *FlightChannel
+}
+
+type FlightChannel struct {
+	flight  *Flight
+	release bool
 }
 
 // function to handle the request
@@ -98,7 +103,7 @@ func (r *RPC) broadcastFlights(flight *Flight) {
 	// Broadcast
 	for _, f := range r.chFlightUpdates {
 		select {
-		case f <- flight:
+		case f <- &FlightChannel{flight: flight, release: false}:
 		default:
 		}
 	}
@@ -116,6 +121,6 @@ func New(f *FlightRepo, r *ReservationRepo, deadline time.Duration) *RPC {
 		deadline:        deadline,
 		flightRepo:      f,
 		reservationRepo: r,
-		chFlightUpdates: make(map[string]chan *Flight),
+		chFlightUpdates: make(map[string]chan *FlightChannel),
 	}
 }

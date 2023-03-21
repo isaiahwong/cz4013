@@ -368,11 +368,14 @@ func (r *RPC) MonitorUpdates(addr string, m *Message, read Readable, write Writa
 	}
 
 	// Create channel
-	if _, ok := r.chFlightUpdates[addr]; ok {
-		return r.error(method, ErrInternalError, "Already monitoring", read, write)
+	if fCh, ok := r.chFlightUpdates[addr]; ok {
+		fCh <- &FlightChannel{
+			release: true,
+		}
 	}
+
 	r.chFlightUpdatesMux.Lock()
-	fCh := make(chan *Flight)
+	fCh := make(chan *FlightChannel)
 	r.chFlightUpdates[addr] = fCh
 	r.chFlightUpdatesMux.Unlock()
 
@@ -380,28 +383,51 @@ func (r *RPC) MonitorUpdates(addr string, m *Message, read Readable, write Writa
 	r.logger.Info("Deadline     : ", monitorUntil.Local().Format(time.RFC3339))
 
 	duration := time.Until(*monitorUntil)
-	// Listen for updates
-	for {
-		select {
-		// Listen for updates via flight channel
-		case flight := <-fCh:
-			// Updates client
-			b, err := encoding.Marshal(flight)
-			if err != nil {
-				return r.error(method, err, "", read, write)
+
+	broadcast := func() error {
+		// Listen for updates
+		for {
+			select {
+			// Listen for updates via flight channel
+			case flightCh := <-fCh:
+				if flightCh.release {
+					return ErrOverrideMonitoring
+				}
+
+				flight := flightCh.flight
+				if flight == nil {
+					continue
+				}
+
+				// Updates client
+				b, err := encoding.Marshal(flight)
+				if err != nil {
+					return r.error(method, err, "", read, write)
+				}
+				r.ok(method, b, lossy, read, write)
+
+			// Listens for deadline
+			case <-time.After(duration):
+				return nil
 			}
-			r.ok(method, b, lossy, read, write)
-
-		// Listens for deadline
-		case <-time.After(duration):
-			// Remove channel
-			r.chFlightUpdatesMux.Lock()
-			// Remove via index
-			delete(r.chFlightUpdates, addr)
-			r.chFlightUpdatesMux.Unlock()
-			r.logger.Info(fmt.Sprintf("Released: %v", addr))
-			return r.ok(method, []byte{}, lossy, read, write)
-
 		}
 	}
+
+	err = broadcast()
+	if err != nil && err != ErrOverrideMonitoring {
+		return err
+	}
+
+	// Don't remove channel if client is still connected
+	if err != ErrOverrideMonitoring {
+		// Remove channel
+		r.chFlightUpdatesMux.Lock()
+		// Remove via index
+		delete(r.chFlightUpdates, addr)
+		r.chFlightUpdatesMux.Unlock()
+		r.logger.Info(fmt.Sprintf("Released: %v", addr))
+	} else {
+		r.logger.Info(fmt.Sprintf("Monitor Override: %v", addr))
+	}
+	return r.ok(method, []byte{}, lossy, read, write)
 }

@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"fmt"
 	"os"
+	"time"
 
 	"github.com/isaiahwong/cz4013/cmd/flight_client/client"
 	"github.com/manifoldco/promptui"
@@ -26,7 +27,7 @@ type App struct {
 	c           *client.Client
 	options     promptui.Select
 	logger      *logrus.Logger
-	keyStrokeCh chan struct{}
+	keyStrokeCh chan client.Placeholder
 }
 
 func (a *App) onKeyStoke() {
@@ -34,8 +35,9 @@ func (a *App) onKeyStoke() {
 	reader := bufio.NewReader(os.Stdin)
 	_, _, _ = reader.ReadRune()
 	select {
-	case a.keyStrokeCh <- struct{}{}:
+	case a.keyStrokeCh <- client.Placeholder{Time: time.Now()}:
 	}
+
 }
 
 func (a *App) topLevel() {
@@ -97,6 +99,6 @@ func New(c *client.Client) *App {
 		c:           c,
 		options:     options,
 		logger:      logrus.New(),
-		keyStrokeCh: make(chan struct{}, 1),
+		keyStrokeCh: make(chan client.Placeholder),
 	}
 }
