@@ -95,6 +95,7 @@ func (r *RPC) FindFlight(m *Message, read Readable, write Writable) error {
 
 	// Finds a flight by id
 	flight, err := r.flightRepo.FindByID(int32(idInt))
+
 	if err != nil {
 		return r.error(method, err, "", read, write)
 	}
@@ -114,8 +115,6 @@ func (r *RPC) FindFlight(m *Message, read Readable, write Writable) error {
 func (r *RPC) ReserveFlight(m *Message, read Readable, write Writable) error {
 	method := "ReserveFlight"
 	lossy := true
-	r.reserveMux.Lock()
-	defer r.reserveMux.Unlock()
 
 	id, ok := m.Query["id"]
 	if !ok || id == "" {
@@ -190,9 +189,6 @@ func (r *RPC) CheckInFlight(m *Message, read Readable, write Writable) error {
 	method := "CheckInFlight"
 	lossy := true
 
-	r.reserveMux.Lock()
-	defer r.reserveMux.Unlock()
-
 	id, ok := m.Query["id"]
 	if !ok || id == "" {
 		return r.error(method, ErrInvalidParams, fmt.Sprintf("%v: is invalid", id), read, write)
@@ -251,9 +247,6 @@ func (r *RPC) AddMeals(m *Message, read Readable, write Writable) error {
 	method := "AddMeals"
 	lossy := true
 
-	r.reserveMux.Lock()
-	defer r.reserveMux.Unlock()
-
 	id, ok := m.Query["id"]
 	if !ok || id == "" {
 		return r.error(method, ErrInvalidParams, fmt.Sprintf("%v: is invalid", id), read, write)
@@ -305,9 +298,6 @@ func (r *RPC) CancelFlight(m *Message, read Readable, write Writable) error {
 		}
 		return r.ok(method, b, lossy, read, write)
 	}
-
-	r.reserveMux.Lock()
-	defer r.reserveMux.Unlock()
 
 	id, ok := m.Query["id"]
 	if !ok || id == "" {

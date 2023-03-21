@@ -287,7 +287,6 @@ func (p *ptrCodec) Decode(d *Decoder, rv reflect.Value) (err error) {
 // ============================================================================
 // Map Codec
 // ============================================================================
-
 type mapCodec struct {
 	key Codec
 	val Codec

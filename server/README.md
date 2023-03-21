@@ -121,3 +121,10 @@ $ ./release/flightsystem-macos -i
 `flights.csv`: Flight generated data
 
 
+# Building the binaries from docker
+> The binaries prepared were built with docker. You may reproduce this by running the following commands
+```
+$ docker build -f Dockerfile.build -t flight-builder . 
+$ docker run --rm -v $(pwd)/release:/release flight-builder
+```
+

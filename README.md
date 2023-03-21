@@ -2,17 +2,32 @@
 ## Running Golang's server/client with prebuilt binaries
 Prebuilt binaries have been created in the `server/release folder`. 
 Run the appropriate binary for the respective OS
+
+## Running the server
 ```
 # macOS
 $ chmod +x ./server/release/flightsystem-macos 
-$ ./server/release/flightsystem-macos -i
+$ ./server/release/flightsystem-macos
 
 # linux
 $ chmod +x ./server/release/flightsystem-ubuntu
-$ ./server/release/flightsystem-ubuntu -i
+$ ./server/release/flightsystem-ubuntu
 
 # windows
 $ ./server/release/flightsystem-windows.exe
+```
+
+## Running the clent
+Open another terminal and run the client
+```
+# macOS
+$ ./server/release/flightsystem-macos -c
+
+# linux
+$ ./server/release/flightsystem-ubuntu -c
+
+# windows
+$ ./server/release/flightsystem-windows.exe -c
 ```
 
 ## Running with docker

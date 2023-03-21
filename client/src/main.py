@@ -1,20 +1,19 @@
-from protocol import Client, Stream
 import time
-from flight import Flight, ReserveFlight
-from message import Message, Error
 import codec
 import datetime
+from protocol import Client, Stream
+from flight import Flight, ReserveFlight
+from message import Message, Error
 from misc import futuretime
 from app import App
-
-# from threading import Process, Event
 from multiprocessing import Process, Event
 
-"""
-A function that uses the App object to call the FindFlights RPC.
-It also provides a Command Line Interface with error checking. 
-"""
+
 def find_flights(app: App):
+    """
+    A function that uses the App object to call the FindFlights RPC.
+    It also provides a Command Line Interface with error checking.
+    """
     source = str(input("Enter Origin of Flight: "))
     destination = str(input("Enter Destination of Flight: "))
 
@@ -34,11 +33,12 @@ def find_flights(app: App):
     except Exception as e:
         print(f"Error: {e}\n")
 
-"""
-A function that uses the App object to call the FindFlight RPC.
-It also provides a Command Line Interface with error checking. 
-"""
+
 def find_flight(app: App):
+    """
+    A function that uses the App object to call the FindFlight RPC.
+    It also provides a Command Line Interface with error checking."""
+
     id = str(input("Enter Flight id: "))
 
     try:
@@ -48,11 +48,10 @@ def find_flight(app: App):
         print(f"Error: {e}\n")
 
 
-"""
-A function that uses the App object to call the ReserveFlight RPC.
-It also provides a Command Line Interface with error checking. 
-"""
 def reserve_flight(app: App):
+    """
+    A function that uses the App object to call the ReserveFlight RPC.
+    It also provides a Command Line Interface with error checking."""
     flightid = input("\nEnter Flight id: ")
     seats = input("\nEnter number of seats: ")
     try:
@@ -61,11 +60,11 @@ def reserve_flight(app: App):
     except Exception as e:
         print(f"Error: {e}\n")
 
-"""
-A function that uses the App object to call the CancelFlight RPC.
-It also provides a Command Line Interface with error checking. 
-"""
+
 def cancel_flight(app: App):
+    """
+    A function that uses the App object to call the CancelFlight RPC.
+    It also provides a Command Line Interface with error checking."""
     if len(app.reservations) == 0:
         print("You have no reservations")
         return
@@ -75,7 +74,7 @@ def cancel_flight(app: App):
     idxToReservations = app.reservations_idx()
     idx = -1
     while idx < 0 or idx >= len(idxToReservations):
-        print("Input the reservation number from 0 to ", len(idxToReservations)-1)
+        print("Input the reservation number from 0 to ", len(idxToReservations) - 1)
         idx = int(input("Select reservation: "))
 
     try:
@@ -87,22 +86,23 @@ def cancel_flight(app: App):
     except Exception as e:
         print(f"Error: {e}\n")
 
-"""
-A function that allows the client to view current reservations.
-It also provides a Command Line Interface with error checking. 
-"""
+
 def view_reservations(app: App):
+    """
+    A function that allows the client to view current reservations.
+    It also provides a Command Line Interface with error checking.
+    """
     if len(app.reservations) == 0:
         print("\nYou have no reservations\n")
         return
     print()
     app.print_reservations()
 
-"""
-A function that uses the App object to call the AddMeals RPC.
-It also provides a Command Line Interface with error checking. 
-"""
+
 def add_meal(app: App):
+    """
+    A function that uses the App object to call the AddMeals RPC.
+    It also provides a Command Line Interface with error checking."""
     if len(app.reservations) == 0:
         print("You have no reservations")
         return
@@ -124,7 +124,7 @@ def add_meal(app: App):
 
         meal_idx = -1
         while meal_idx < 0 or meal_idx >= len(meals):
-            print("Please select the meal number from 0 to ", len(meals)-1)
+            print("Please select the meal number from 0 to ", len(meals) - 1)
             meal_idx = int(input("Select meal: "))
 
         # Submit RPC request
@@ -136,22 +136,23 @@ def add_meal(app: App):
     except Exception as e:
         print(f"Error: {e}\n")
 
-"""
-A function that uses the App object to call the MonitorUpdates RPC.
-It also provides a Command Line Interface with error checking. 
-"""
+
 def monitor_updates(app: App):
+    """
+    A function that uses the App object to call the MonitorUpdates RPC.
+    It also provides a Command Line Interface with error checking."""
+
     try:
         duration = int(input("Monitor updates Duration (minutes): "))
         app.monitor_updates(duration, blocking=True)
     except Exception as e:
         print(f"Error: {e}\n")
 
-"""
-A function that prints out what the client can do. 
-It also provides a Command Line Interface with error checking. 
-"""
+
 def print_menu():
+    """
+    A function that prints out what the client can do.
+    It also provides a Command Line Interface with error checking."""
     print("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
     print("1: Find Flights")
     print("2: Find Flight")
@@ -164,37 +165,41 @@ def print_menu():
     print("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
 
 
-"""
-A function that allows the client to use default IP address and Port OR set their own.
-Default IP is 127.0.0.1 (localhost) and default port is 8080. 
-If you wish to set your own IP and Port, you can enter IP:Port
-e.g. 192.168.8.12:2222 
-It also provides a Command Line Interface with error checking. 
-"""
 def clientFactory():
-    """Client factory"""
+    """
+    Client factory that returns an App with prompts
+
+    A function that allows the client to use default IP address and Port OR set their own.
+    Default IP is 127.0.0.1 (localhost) and default port is 8080.
+    If you wish to set your own IP and Port, you can enter IP:Port
+    e.g. 192.168.8.12:2222
+    It also provides a Command Line Interface with error checking.
+    """
+
     d = input("Load default Y/N: ").upper()
     if d != "N":
         return App()
 
     addr = input("Enter remote address: ").split(":")
     remote = addr[0]
-    print(remote)
     port = int(addr[1])
-    print(port)
-    return App(remote=remote, port=port)
 
-""" The Main function that runs a while loop such that the client can choose any of the following options:
-1. FindFlights RPC
-2. FindFight RPC
-3. ReserveFlight RPC
-4. CancelFlight RPC
-5. AddMeal RPC
-6. MonitorUpdates RPC
-7. View current reservations
-8. exit 
-"""
+    retries = int(input("Enter retries: "))
+    return App(remote=remote, port=port, retries=retries)
+
+
 def main():
+    """
+    The Main function that runs a while loop such that the client can choose any of the following options:
+    1. FindFlights RPC
+    2. FindFight RPC
+    3. ReserveFlight RPC
+    4. CancelFlight RPC
+    5. AddMeal RPC
+    6. MonitorUpdates RPC
+    7. View current reservations
+    8. exit
+    """
     a = clientFactory()
     while True:
         try:

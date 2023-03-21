@@ -7,7 +7,7 @@ import (
 )
 
 type Decoder struct {
-	reader *bufferReader
+	reader *BufferReader
 }
 
 func Unmarshal(data []byte, v interface{}) error {
@@ -21,7 +21,7 @@ func Unmarshal(data []byte, v interface{}) error {
 
 func newDecoder(data []byte) *Decoder {
 	return &Decoder{
-		reader: newBufferReader(data),
+		reader: NewBufferReader(data),
 	}
 }
 

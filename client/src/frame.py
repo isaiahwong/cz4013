@@ -1,13 +1,17 @@
 import struct
 from enum import Enum
 
-""" Catch the End Of File Exception """
+
 class EOF(Exception):
+    """
+    EOF representation
+    """
+
     def __init__(self, message):
         self.message = message
         super().__init__(self.message)
 
-""" Flags for transmission """
+
 class Flag(Enum):
     """
     SYN: Synchronization flag for start of stream
@@ -16,17 +20,20 @@ class Flag(Enum):
     NOP: No Operation
     FIN: Finish ; terminates end of stream
     """
+
     SYN = 0
     PSH = 1
     DNE = 2
     NOP = 3
     FIN = 4
 
-"""
-A Frame represents a unit of transmission in the protocol.
-It consists of a header and a body which contains the actual information being transmitted.
-"""
+
 class Frame:
+    """
+    A Frame represents a unit of transmission in the protocol.
+    It consists of a header and a body which contains the actual information being transmitted.
+    """
+
     flags = set(item for item in Flag)  # creates a set of all the flags
 
     def __init__(self, flag: Flag, sid: bytes, rid: int, seqid: int, data=bytearray()):
@@ -51,16 +58,16 @@ class Frame:
         # [flag  len(data) sid  data]
 
 
-""" 
-A header is attached to each message.
-A header contains of the following:
-1. flag - the type of frame being sent, length of body 
-2. length - length of the information being transmitted
-3. stream id (SID) – a unique identifier that identifies a stream
-4. request id (RID) - a monotonic increasing id of streams created under the same session (used for identifying retries)
-5. sequence id (SeqId) - defines the ordering of a message that has been partitioned into multiple frames during transmission
-"""
 class Header:
+    """
+    A header is attached to each message.
+    A header contains of the following:
+    1. flag - the type of frame being sent, length of body
+    2. length - length of the information being transmitted
+    3. stream id (SID) – a unique identifier that identifies a stream
+    4. request id (RID) - a monotonic increasing id of streams created under the same session (used for identifying retries)
+    5. sequence id (SeqId) - defines the ordering of a message that has been partitioned into multiple frames during transmission"""
+
     size_of_flag = 1
     size_of_length = 2
     size_of_rid = 4

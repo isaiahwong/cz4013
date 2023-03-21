@@ -21,8 +21,6 @@ type RPC struct {
 	flightRepo      *FlightRepo
 	reservationRepo *ReservationRepo
 
-	reserveMux sync.Mutex
-
 	chFlightUpdatesMux sync.Mutex
 	chFlightUpdates    map[string]chan *Flight
 }

@@ -1,6 +1,8 @@
 package rpc
 
 import (
+	"sync"
+
 	"github.com/isaiahwong/cz4013/store"
 )
 
@@ -10,9 +12,13 @@ type FlightSearch func(q string, f *Flight) bool
 type FlightRepo struct {
 	db       *store.DB
 	Relation string
+	lock     sync.Mutex
 }
 
 func (r *FlightRepo) GetAll() ([]*Flight, error) {
+	r.lock.Lock()
+	defer r.lock.Unlock()
+
 	rel, err := r.db.GetRelation(r.Relation)
 	if err != nil {
 		return nil, err
@@ -27,6 +33,8 @@ func (r *FlightRepo) GetAll() ([]*Flight, error) {
 }
 
 func (r *FlightRepo) FindByID(id int32) (*Flight, error) {
+	r.lock.Lock()
+	defer r.lock.Unlock()
 	rel, err := r.db.GetRelation(r.Relation)
 	if err != nil {
 		return nil, err
@@ -47,6 +55,8 @@ func (r *FlightRepo) FindByID(id int32) (*Flight, error) {
 }
 
 func (r *FlightRepo) Update(f *Flight) error {
+	r.lock.Lock()
+	defer r.lock.Unlock()
 	predicate := func(old interface{}, new interface{}) bool {
 		oldFlight, ok := old.(*Flight)
 		if !ok {
@@ -75,9 +85,12 @@ func NewFlightRepo(db *store.DB) *FlightRepo {
 type ReservationRepo struct {
 	db       *store.DB
 	Relation string
+	lock     sync.Mutex
 }
 
 func (r *ReservationRepo) GetAll() ([]*Flight, error) {
+	r.lock.Lock()
+	defer r.lock.Unlock()
 	rel, err := r.db.GetRelation(r.Relation)
 	if err != nil {
 		return nil, err
@@ -92,10 +105,14 @@ func (r *ReservationRepo) GetAll() ([]*Flight, error) {
 }
 
 func (r *ReservationRepo) Insert(rs *ReserveFlight) error {
+	r.lock.Lock()
+	defer r.lock.Unlock()
 	return r.db.Insert(r.Relation, rs)
 }
 
 func (r *ReservationRepo) FindByID(id string) (*ReserveFlight, error) {
+	r.lock.Lock()
+	defer r.lock.Unlock()
 	rel, err := r.db.GetRelation(r.Relation)
 	if err != nil {
 		return nil, err
@@ -116,6 +133,8 @@ func (r *ReservationRepo) FindByID(id string) (*ReserveFlight, error) {
 }
 
 func (r *ReservationRepo) Update(f *ReserveFlight) error {
+	r.lock.Lock()
+	defer r.lock.Unlock()
 	predicate := func(old interface{}, new interface{}) bool {
 		or, ok := old.(*ReserveFlight)
 		if !ok {
@@ -134,6 +153,8 @@ func (r *ReservationRepo) Update(f *ReserveFlight) error {
 }
 
 func (r *ReservationRepo) Delete(f *ReserveFlight) error {
+	r.lock.Lock()
+	defer r.lock.Unlock()
 	predicate := func(current interface{}) bool {
 		c, ok := current.(*ReserveFlight)
 		if !ok {

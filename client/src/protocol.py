@@ -6,15 +6,15 @@ import uuid
 from threading import Thread, Lock
 from queue import Queue, Empty
 
-"""
-The stream class provides an active connection between two entities where frames are exchanged 
-continuously during its lifetime.
-A stream transmits frames where the flags determine the state of a request/response between entities. 
-Reordering of frames happens at the stream level. Once a client establishes a stream with a server, 
-both entities can exchange frames without a disjoint connection.
-"""
 
 class Stream:
+    """
+    The stream class provides an stream-oriented connection between two entities where frames are exchanged.
+    A stream transmits frames where the flags determine the state of a request/response between entities.
+    Reordering of frames happens at the stream level. Once a client establishes a stream with a server,
+    both entities can exchange frames without a disjoint connection
+    ."""
+
     def __init__(self, sess, sid, rid, maxFrameSize, deadline):
         self.session = sess  # the session
         self.sid = sid  # session id
@@ -39,8 +39,11 @@ class Stream:
     def notifyClose(self):
         self.closeEvent.put(True, block=True)
 
-    # If a deadline is provided, set the deadline
     def setDeadline(self, deadline: int = 0):
+        """
+        Sets a deadline timer in the backround that will notify the stream when the deadline has been reached.
+        """
+
         def runnable():
             start_time = time.time()
             while time.time() < start_time + deadline:
@@ -51,12 +54,17 @@ class Stream:
         t.daemon = True
         t.start()
 
-    # Write to the server 
     def write(self, data=bytearray()):
+        """
+        Writes to a remote host
+
+        Args:
+            data (_type_, optional): _description_. Defaults to bytearray().
+        """
         bts = data
         seqid = 0
-        # create the frame by creating a Frame Object 
-        frame = Frame(Flag.PSH, self.sid, self.rid, seqid, data)  
+        # create the frame by creating a Frame Object
+        frame = Frame(Flag.PSH, self.sid, self.rid, seqid, data)
         while len(bts) > 0:
             size = len(bts)
             if size > self.maxFrameSize:
@@ -68,18 +76,26 @@ class Stream:
             seqid += 1
         self.session.writeFrame(frame=Frame(Flag.DNE, self.sid, self.rid, 0))
 
-    # Read from the server and calls the readIndefinitely function
     def read(self):
+        """
+        Reads from a remote host
+
+        """
         dataBuffer = bytearray()
-        res = self.readIndefinitely()
+        res = self._read()
         res.sort(key=lambda x: x[0])
         for _, b in res:
             dataBuffer.extend(b)
 
         return dataBuffer
 
-    # Read with a deadline and timeout. If nothing is received within the deadline, yield cpu
-    def readWait(self):
+    def _readWait(self):
+        """
+        Waits for incoming buffer when available. Will be notified by various channels
+
+        Raises:
+            TimeoutError: _description_
+        """
         while True:
             if self.deadline:
                 try:
@@ -106,9 +122,13 @@ class Stream:
                 pass
             time.sleep(1 / 1000)  # yield cpu
 
+    def _read(self):
+        """
+        blocking read if deadline is not set. Otherwise, will block until deadline is reached
 
-    # If there is no deadline set, read from the server indefinitely
-    def readIndefinitely(self):
+        Returns:
+            _type_: _description_
+        """
         res = []
         if self.deadline != None:
             self.setDeadline(self.deadline)
@@ -127,27 +147,25 @@ class Stream:
                 )
             except Empty:
                 pass
-            hasBuffers = self.readWait()
+            hasBuffers = self._readWait()
             if not hasBuffers:
                 break
 
         return res
 
-    # Close the stream 
+    # Close the stream
     def close(self):
         self.notifyClose()
         self.closed = True
         self.session.writeFrame(frame=Frame(Flag.FIN, self.sid, self.rid, 0))
 
 
-"""
-The session class maintains the UDP connection and streams a the top level. 
-The session maintains a hash-map of streams where it takes a SID, RID pair as the key corresponding to the stream.
-the session does the following functions:
-1. Creates a single stream 
-2. Connects to the remote server where it can send its request
-"""
 class Session:
+    """
+    The session class maintains the UDP connection and streams a the top level.
+    The session maintains a hash-map of streams where it takes a SID, RID pair as the key corresponding to the stream.
+    """
+
     def __init__(self, sock: socket.socket, target: tuple):
         self.sock = sock
         self.target = target
@@ -159,15 +177,15 @@ class Session:
         self.read_thread.daemon = True
         self.read_thread.start()
 
-    """
-    client implementation of recv only.
-    Does not handle SYN.
-    """
     def recv(self):
-        
+        """
+        Client implementation of recv of protocol implementation
+        Cannot serve incoming SYN requests as per the protocol.
+        """
+        # Let OS assign a port with 0 port
         self.sock.bind(("0.0.0.0", 0))
-        
-        # To keep reading from the server 
+
+        # Listens for incoming frames from udp socket
         def loop():
             while True:
                 d, addr = self.sock.recvfrom(self.mtu)
@@ -207,13 +225,14 @@ class Session:
         except Exception as e:
             print(e)
 
-    # Returns the streamKey sid and rid 
-    def streamKey(self, sid: bytes, rid: int):
+    def streamKey(self, sid: bytes, rid: int) -> str:
+        # Returns the string representation of sid and rid
         return str(f"{str(sid)}{rid}")
 
-
-    # Open a session with the existing stream with a deadline
-    def openWithExisting(self, stream: Stream, deadline: int):
+    def open_with_existing(self, stream: Stream, deadline: int):
+        """
+        Creates a new stream with an existing stream sid
+        """
         sid = stream.sid
         # calling the writeframe function to send synchronization
         self.writeFrame(frame=Frame(Flag.SYN, bytes(sid), self.requestId, 0))
@@ -226,8 +245,10 @@ class Session:
         self.mutex.release()
         return stream
 
-    # Open a new session 
     def open(self, deadline: int = None):
+        """
+        Opens a new stream to the remote host
+        """
         sid = uuid.uuid4().bytes[:16]
         # calling the writeframe function to send synchronization
         self.writeFrame(frame=Frame(Flag.SYN, bytes(sid), self.requestId, 0))
@@ -241,33 +262,29 @@ class Session:
 
         return stream
 
-    # Write a frame to the server 
+    # Write a frame to the server
     def writeFrame(self, frame: Frame, deadline: int = 0):
         self.sock.sendto(frame.buffer, self.target)
 
 
-
-"""
-The client class keeps track of the address and port of the server
-"""
 class Client:
+    """
+    Client representation of the protocol
+    """
+
     def __init__(self, addr: str, port: int = 8080):
         self.addr = addr
         self.port = port
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         # to reuse ip address to prevent timeout
-        self.sock.setsockopt(
-            socket.SOL_SOCKET, socket.SO_REUSEADDR, 1
-        )  
+        self.sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         # call the session class
-        self.session = Session(
-            sock=self.sock, target=(addr, port)
-        )  
+        self.session = Session(sock=self.sock, target=(addr, port))
 
-    # Open a new session 
     def open(self, deadline: int = None):
+        """Opens a new session with the server"""
         return self.session.open(deadline=deadline)
 
-    # Open a session with the existing stream
-    def openWithExisting(self, stream: Stream, deadline: int = None):
-        return self.session.openWithExisting(stream=stream, deadline=deadline)
+    def open_with_existing(self, stream: Stream, deadline: int = None):
+        """Creates a new stream with an existing stream sid"""
+        return self.session.open_with_existing(stream=stream, deadline=deadline)
