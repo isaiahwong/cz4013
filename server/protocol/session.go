@@ -157,18 +157,18 @@ func (s *Session) Open(addr *net.UDPAddr) (*Stream, error) {
 // open
 func (s *Session) open(stream *Stream) (*Stream, error) {
 	if _, err := s.writeFrame(NewFrame(SYN, stream.sid, stream.rid, 0), time.After(OpenCloseTimeout)); err != nil {
-		return nil, err
+		return stream, err
 	}
 
 	s.streamLock.Lock()
 	defer s.streamLock.Unlock()
 	select {
 	case <-s.chDie:
-		return nil, io.ErrClosedPipe
+		return stream, io.ErrClosedPipe
 	case <-s.chSocketReadError:
-		return nil, s.socketReadError.Load().(error)
+		return stream, s.socketReadError.Load().(error)
 	case <-s.chProtoError:
-		return nil, s.protoError.Load().(error)
+		return stream, s.protoError.Load().(error)
 	default:
 		s.streams[fmt.Sprintf("%v%v", stream.sid, stream.rid)] = stream
 		atomic.AddUint32(&s.requestID, 1)

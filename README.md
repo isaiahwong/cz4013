@@ -35,7 +35,7 @@ $ ./server/release/flightsystem-windows.exe -c
 > Running the client on docker is not recommended as you have to somehow pass in stdin
 ```
 $ docker build  -t flight-sys .
-$ docker run -p 8080:8080 flight-sys
+$ docker run -p 8080:8080/udp flight-sys
 ```
 
 ## Running Golang's server/client from src

@@ -25,7 +25,6 @@ func (c *Client) FindFlights(source string, destination string) ([]*rpc.Flight, 
 		"source":      source,
 		"destination": destination,
 	}
-
 	res, stream, err := c.send(stream, method, req, &c.opts.deadline)
 	if err != nil {
 		return nil, err

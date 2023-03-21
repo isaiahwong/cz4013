@@ -11,7 +11,7 @@ $ go run cmd/main.go -deadline 3 -semantic 1 -loss 0 -port 8080
 ## Running with docker
 ```
 $ docker build  -t flight-sys .
-$ docker run -p 8080:8080 flight-sys 
+$ docker run -p 8080:8080/udp flight-sys 
 ```
 
 ## Running with prebuilt binaries

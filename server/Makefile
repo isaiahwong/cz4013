@@ -12,7 +12,7 @@ build:
 	docker build  -t flight-sys .
 
 docker_run:
-	docker run -p 8080:8080 flight-sys 
+	docker run -p 8080:8080/udp flight-sys 
 	
 docker_clean:
 	docker image prune --all --filter "dangling=true"

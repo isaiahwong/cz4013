@@ -32,5 +32,5 @@ COPY ./flights.csv .
 RUN chmod +x ./flightsys
 
 # Start the binary when the container starts
-CMD ["./flightsys", "-deadline", "3", "-semantic", "1", "-loss", "50", "-port", "8080"]
+CMD ["./flightsys", "-deadline", "3", "-semantic", "0", "-loss", "10", "-port", "8080"]
 
