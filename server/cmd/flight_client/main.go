@@ -40,7 +40,7 @@ func prompt() *client.Client {
 	}
 
 	remoteAddrP := promptui.Prompt{
-		Label: "Enter remote address",
+		Label: "Enter remote address <IP>:<PORT>",
 	}
 	remoteAddr, err := remoteAddrP.Run()
 	if common.HandleInterrupt(err) != nil {

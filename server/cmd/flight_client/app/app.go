@@ -21,6 +21,7 @@ var (
 	GetMeals         = "GetMeals"
 	AddMeals         = "AddMeals"
 	MonitorUpdates   = "MonitorUpdates"
+	Exit             = "Exit"
 )
 
 type App struct {
@@ -41,11 +42,14 @@ func (a *App) onKeyStoke() {
 }
 
 func (a *App) topLevel() {
+	close := func() {
+		fmt.Println("Goodbye")
+		os.Exit(0)
+	}
 	_, result, err := a.options.Run()
 
 	if err == promptui.ErrInterrupt {
-		fmt.Println("Goodbye")
-		os.Exit(0)
+		close()
 	}
 
 	if err != nil {
@@ -70,6 +74,9 @@ func (a *App) topLevel() {
 		a.AddMeals()
 	case MonitorUpdates:
 		a.monitorUpdates()
+	case Exit:
+		close()
+		return
 	}
 }
 
@@ -90,7 +97,7 @@ func New(c *client.Client) *App {
 			FindFlights, FindFlight,
 			ReserveFlight, CancelFlight,
 			ViewReservations,
-			AddMeals, MonitorUpdates,
+			AddMeals, MonitorUpdates, Exit,
 		},
 		Size: 10,
 	}

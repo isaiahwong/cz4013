@@ -38,6 +38,19 @@ $ docker build  -t flight-sys .
 $ docker run -p 8080:8080/udp flight-sys
 ```
 
+## Running in interactive mode
+> Interactive mode provides user friendly prompts to run the server
+```
+# macOS
+$ ./server/release/flightsystem-macos -i
+
+# linux
+$ ./server/release/flightsystem-ubuntu -i
+
+# windows
+$ ./server/release/flightsystem-windows.exe -i
+```
+
 ## Running Golang's server/client from src
 [Installation of golang](https://go.dev/doc/install)
 ### Download dependencies 

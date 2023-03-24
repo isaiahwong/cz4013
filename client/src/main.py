@@ -180,7 +180,7 @@ def clientFactory():
     if d != "N":
         return App()
 
-    addr = input("Enter remote address: ").split(":")
+    addr = input("Enter remote address <IP>:<PORT>: ").split(":")
     remote = addr[0]
     port = int(addr[1])
 
