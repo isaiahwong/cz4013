@@ -71,7 +71,7 @@ func (e *Encoder) writeString(v string) error {
 	return binary.Write(e.out, binary.LittleEndian, []byte(v))
 }
 
-// writeInt
+// writeInt writes a 32 bit integer
 func (e *Encoder) writeInt(n int) error {
 	err := binary.Write(e.out, binary.LittleEndian, n)
 	if err != nil {
@@ -143,6 +143,7 @@ func (e *Encoder) writeFloat64(f float64) error {
 	return binary.Write(e.out, binary.LittleEndian, buf)
 }
 
+// writeBytes writes a byte slice
 func (e *Encoder) writeBytes(b []byte) error {
 	return binary.Write(e.out, binary.LittleEndian, b)
 }

@@ -223,6 +223,7 @@ func (c *Client) MonitorUpdates(duration time.Duration, interruptCh chan Placeho
 		return err
 	}
 
+	// Inline blocking read function
 	read := func() {
 		for {
 			res := make([]byte, c.mtu)
@@ -258,6 +259,8 @@ func (c *Client) MonitorUpdates(duration time.Duration, interruptCh chan Placeho
 
 	// Listen on goroutine
 	go read()
+
+	// Listens for either interrupt or flight data from data channel
 	for !stream.IsClosed() {
 		var body []byte
 		select {

@@ -15,6 +15,7 @@ type CSVParser interface {
 	Parse(data []string) error
 }
 
+// LoadCSV loads a csv file into a list
 func LoadCSV(file string, list interface{}) error {
 	dir, err := os.Getwd()
 	if err != nil {

@@ -24,6 +24,8 @@ var (
 	Exit             = "Exit"
 )
 
+// App struct provides a wrapper around the client
+// Representation of the client application
 type App struct {
 	c           *client.Client
 	options     promptui.Select
@@ -41,6 +43,7 @@ func (a *App) onKeyStoke() {
 
 }
 
+// topLevel is the main menu of the application
 func (a *App) topLevel() {
 	close := func() {
 		fmt.Println("Goodbye")
@@ -59,21 +62,21 @@ func (a *App) topLevel() {
 
 	switch result {
 	case FindFlights:
-		a.findFlights()
+		a.FindFlights()
 	case FindFlight:
-		a.findFlight()
+		a.FindFlight()
 	case ReserveFlight:
-		a.reserveFlight()
+		a.ReserveFlight()
 	case CheckInFlight:
-		a.checkInFlight()
+		a.CheckInFlight()
 	case CancelFlight:
-		a.cancelFlight()
+		a.CancelFlight()
 	case ViewReservations:
 		a.ViewReservations()
 	case AddMeals:
 		a.AddMeals()
 	case MonitorUpdates:
-		a.monitorUpdates()
+		a.MonitorUpdates()
 	case Exit:
 		close()
 		return
@@ -90,6 +93,7 @@ func (a *App) Start() error {
 	}
 }
 
+// New creates a new instance of the App
 func New(c *client.Client) *App {
 	options := promptui.Select{
 		Label: "Select an RPC method",

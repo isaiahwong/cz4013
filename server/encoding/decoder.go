@@ -10,6 +10,7 @@ type Decoder struct {
 	reader *BufferReader
 }
 
+// Unmarshal decodes the byte slice stream into the value v.
 func Unmarshal(data []byte, v interface{}) error {
 	d := newDecoder(data)
 	err := d.unmarshal(v)
@@ -25,6 +26,7 @@ func newDecoder(data []byte) *Decoder {
 	}
 }
 
+// unmarshal decodes the byte slice stream into the value v.
 func (d *Decoder) unmarshal(v interface{}) error {
 	var err error
 	var c Codec
@@ -72,7 +74,7 @@ func (d *Decoder) readString() (string, error) {
 	return string(strBytes), nil
 }
 
-// readInt
+// readInt8 deserializes data to int8.
 func (d *Decoder) readInt() (n int, err error) {
 	if err = binary.Read(d.reader, binary.LittleEndian, &n); err != nil {
 		return 0, err
@@ -96,6 +98,7 @@ func (d *Decoder) readUint32() (n uint32, err error) {
 	return
 }
 
+// readInt64 deserializes data to int64.
 func (d *Decoder) readUint64() (n uint64, err error) {
 	if err = binary.Read(d.reader, binary.LittleEndian, &n); err != nil {
 		return 0, err
@@ -103,6 +106,7 @@ func (d *Decoder) readUint64() (n uint64, err error) {
 	return
 }
 
+// readInt32 deserializes data to int32.
 func (d *Decoder) readInt32() (n int32, err error) {
 	if err = binary.Read(d.reader, binary.LittleEndian, &n); err != nil {
 		return 0, err
@@ -110,6 +114,7 @@ func (d *Decoder) readInt32() (n int32, err error) {
 	return
 }
 
+// readInt64 deserializes data to int64.
 func (d *Decoder) readInt64() (n int64, err error) {
 	if err = binary.Read(d.reader, binary.LittleEndian, &n); err != nil {
 		return 0, err

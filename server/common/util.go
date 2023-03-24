@@ -13,6 +13,7 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
+// CreateRegexp creates a case-insensitive regexp that matches s
 func CreateRegexp(s string) *regexp.Regexp {
 	return regexp.MustCompile(fmt.Sprintf(`(?i)\b\w*%v\w*\b`, s))
 }
@@ -62,6 +63,7 @@ func ValidateInt(input string) error {
 	return nil
 }
 
+// NewLogger creates a new logger instance
 func NewLogger() *logrus.Logger {
 	log := logrus.New()
 

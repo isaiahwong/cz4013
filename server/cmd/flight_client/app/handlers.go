@@ -12,7 +12,9 @@ import (
 	"github.com/manifoldco/promptui"
 )
 
-func (a *App) findFlights() {
+// FindFlights facade function that handle user prompts
+// and delegates to client for actual RPC calls
+func (a *App) FindFlights() {
 	srcP := promptui.Prompt{
 		Label: "Enter source",
 	}
@@ -21,12 +23,14 @@ func (a *App) findFlights() {
 		Label: "Enter destination",
 	}
 
+	// Prompt for source
 	src, err := srcP.Run()
 	if err != nil {
 		a.logger.WithError(err).Error(FindFlights)
 		return
 	}
 
+	// Prompt for destination
 	dest, err := destP.Run()
 	if err != nil {
 		a.logger.WithError(err).Error(FindFlights)
@@ -46,6 +50,7 @@ func (a *App) findFlights() {
 	}
 
 	common.PrintTitle("Flights")
+	// Print for equal alignment
 	w := tabwriter.NewWriter(os.Stdout, 0, 8, 4, ' ', tabwriter.TabIndent)
 	for i, f := range flights {
 		fmt.Println(fmt.Sprintf("\nFlight %v", i+1))
@@ -55,7 +60,9 @@ func (a *App) findFlights() {
 	w.Flush()
 }
 
-func (a *App) findFlight() {
+// FindFlight facade function that handle user prompts
+// and delegates to client for actual RPC calls
+func (a *App) FindFlight() {
 	idP := promptui.Prompt{
 		Label: "Enter flight id",
 	}
@@ -80,7 +87,9 @@ func (a *App) findFlight() {
 	w.Flush()
 }
 
-func (a *App) reserveFlight() {
+// ReserveFlight facade function that handle user prompts
+// and delegates to client for actual RPC calls
+func (a *App) ReserveFlight() {
 	f := promptui.Prompt{
 		Label:    "Enter Flight ID",
 		Validate: common.ValidateInt,
@@ -128,7 +137,9 @@ func (a *App) reserveFlight() {
 	w.Flush()
 }
 
-func (a *App) checkInFlight() {
+// CheckInFlight facade function that handle user prompts
+// and delegates to client for actual RPC calls
+func (a *App) CheckInFlight() {
 	w := tabwriter.NewWriter(os.Stdout, 0, 8, 4, ' ', tabwriter.TabIndent)
 
 	// Index to reservation id
@@ -172,13 +183,18 @@ func (a *App) checkInFlight() {
 	w.Flush()
 }
 
+// AddMeals facade function that handle user prompts
+// and delegates to client for actual RPC calls
 func (a *App) AddMeals() {
 	if len(a.c.Reservations) == 0 {
 		a.logger.Info("No reservations made")
 		return
 	}
 
+	// Used for equal column printing
 	w := tabwriter.NewWriter(os.Stdout, 0, 8, 4, ' ', tabwriter.TabIndent)
+
+	// Retrieve meals from server
 	meals, err := a.c.GetMeals()
 	if err != nil {
 		a.logger.WithError(err).Error(GetMeals)
@@ -193,6 +209,7 @@ func (a *App) AddMeals() {
 	indexToID := make(map[int]string)
 	i := 0
 
+	// Print reservation for selection
 	for k, v := range a.c.Reservations {
 		indexToID[i] = k
 		fmt.Println(fmt.Sprintf("Reservation [%v]", i))
@@ -201,6 +218,7 @@ func (a *App) AddMeals() {
 	}
 	w.Flush()
 
+	// Prompt users to select reservation
 	rp := promptui.Prompt{
 		Label:    "Select index of reservation to add meal",
 		Validate: common.ValidateRange(0, int64(len(a.c.Reservations))),
@@ -217,7 +235,7 @@ func (a *App) AddMeals() {
 		return
 	}
 
-	// Meal
+	// Print meals for selection
 	for i, v := range meals {
 		fmt.Println(fmt.Sprintf("Meal [%v]", i))
 		fmt.Fprintln(w, v.String())
@@ -236,12 +254,14 @@ func (a *App) AddMeals() {
 	mealIdx, _ := strconv.ParseInt(mealStr, 10, 32)
 	meal := meals[int(mealIdx)]
 
+	// Add meal to reservation RPC call
 	rc, err := a.c.AddMeals(reservationID, fmt.Sprint(meal.ID))
 	if err != nil {
 		a.logger.WithError(err).Error(AddMeals)
 		return
 	}
-	// update reservation
+
+	// Update local state reservation
 	a.c.Reservations[rc.ID] = rc
 	common.PrintTitle("Meal Added")
 	fmt.Fprintln(w, rc.String())
@@ -253,13 +273,16 @@ func (a *App) AddMeals() {
 	w.Flush()
 }
 
-func (a *App) cancelFlight() {
+// CancelFlight facade function that handle user prompts
+// and delegates to client for actual RPC calls
+func (a *App) CancelFlight() {
 	w := tabwriter.NewWriter(os.Stdout, 0, 8, 4, ' ', tabwriter.TabIndent)
 
 	// Index to reservation id
 	indexToID := make(map[int]string)
 	i := 0
 
+	// Print reservation for selection
 	for k, v := range a.c.Reservations {
 		indexToID[i] = k
 		fmt.Println(fmt.Sprintf("\nReservation [%v]", i))
@@ -298,7 +321,10 @@ func (a *App) cancelFlight() {
 	w.Flush()
 }
 
-func (a *App) monitorUpdates() {
+// MonitorUpdates facade function that handle user prompts
+// Function handles keyStroke access for user to cancel monitoring
+func (a *App) MonitorUpdates() {
+	// Validate inline function
 	validate := func(input string) error {
 		i, err := strconv.ParseInt(input, 10, 64)
 		if err != nil {
@@ -308,7 +334,6 @@ func (a *App) monitorUpdates() {
 		if i <= 0 {
 			return errors.New("Must be greater than 0")
 		}
-
 		return nil
 	}
 
@@ -316,20 +341,22 @@ func (a *App) monitorUpdates() {
 		Label:    "Enter how long to monitor for (in minutes)",
 		Validate: validate,
 	}
-
 	ts, err := ti.Run()
 	if err != nil {
 		a.logger.WithError(err).Error(MonitorUpdates)
 		return
 	}
-
-	// convert to minutes
+	// Convert to minutes
 	t, _ := strconv.ParseInt(ts, 10, 32)
 	if err != nil {
 		a.logger.WithError(err).Error(MonitorUpdates)
 		return
 	}
+
+	// Listen for keystroke
 	go a.onKeyStoke()
+
+	// Perform block RPC calls
 	err = a.c.MonitorUpdates(time.Duration(t)*time.Minute, a.keyStrokeCh)
 }
 

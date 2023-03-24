@@ -15,13 +15,14 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-var flights = []*rpc.Flight{}
 var db *store.DB
 var flightRepo *rpc.FlightRepo
 var reservationRepo *rpc.ReservationRepo
 var logger *logrus.Logger
 
 func init() {
+	var flights = []*rpc.Flight{}
+
 	// Load flights from csv
 	if err := common.LoadCSV("flights.csv", &flights); err != nil {
 		panic(err)
@@ -120,6 +121,7 @@ func prompt() *protocol.Server {
 	return New(semIdx, 5, int(lossRateInt), "8080")
 }
 
+// Start starts the server
 func Start() {
 	s := prompt()
 	s.Serve()

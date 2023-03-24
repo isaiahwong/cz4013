@@ -11,14 +11,17 @@ type Codec interface {
 	Decode(*Decoder, reflect.Value) error
 }
 
+// GetCodec returns the codec for the given value
 func GetCodec(v interface{}) (Codec, error) {
 	return getCodec(reflect.ValueOf(v))
 }
 
+// GetCodecWithRV returns the codec for the given reflect.Value
 func GetCodecWithRV(v reflect.Value) (Codec, error) {
 	return getCodec(v)
 }
 
+// getCodec returns the codec for the given reflect.Value
 func getCodec(t reflect.Value) (Codec, error) {
 	switch t.Kind() {
 	case reflect.String:

@@ -55,6 +55,7 @@ var (
 	ErrMayBlock        = errors.New("op may block on IO")
 )
 
+// NewStream creates a new stream
 func NewStream(sess *Session, sid []byte, rid uint32, frameSize int, addr *net.UDPAddr) *Stream {
 	s := new(Stream)
 	s.sid = sid
@@ -168,6 +169,7 @@ func (s *Stream) read() *ByteSeq {
 	return b
 }
 
+// waitRead blocks until there is data to read or an error occurs
 func (s *Stream) waitRead() error {
 	var timer *time.Timer
 	var deadline <-chan time.Time
@@ -220,6 +222,7 @@ func (s *Stream) notifyReadEvent() {
 	}
 }
 
+// notify ack event to stream
 func (s *Stream) notifyACKEvent() {
 	select {
 	case s.chAck <- struct{}{}:
@@ -227,6 +230,7 @@ func (s *Stream) notifyACKEvent() {
 	}
 }
 
+// Write writes data to the stream.
 func (s *Stream) Write(b []byte) (n int, err error) {
 	var deadline <-chan time.Time
 	if d, ok := s.wDeadline.Load().(time.Time); ok && !d.IsZero() {
@@ -280,4 +284,6 @@ func (s *Stream) fin() {
 	close(s.chFin)
 }
 
-func (s *Stream) sessionClose() { close(s.chDie) }
+// close closes the stream function is kept private
+// to ensure it is only called within the protocol package
+func (s *Stream) close() { close(s.chDie) }

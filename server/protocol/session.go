@@ -13,7 +13,8 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-const OpenCloseTimeout = 30 * time.Second // stream open/close timeout
+// OpenCloseTimeout is the default timeout for opening and closing a stream/session
+const OpenCloseTimeout = 30 * time.Second
 
 // Session represents the abstraction of transport between a client and a server.
 // Session can be used synomously as a client or a server.
@@ -110,7 +111,7 @@ func (s *Session) Close() error {
 		s.streamLock.Lock()
 		// Close all streams
 		for k := range s.streams {
-			s.streams[k].sessionClose()
+			s.streams[k].close()
 		}
 		s.streamLock.Unlock()
 		return s.conn.Close()
@@ -154,7 +155,7 @@ func (s *Session) Open(addr *net.UDPAddr) (*Stream, error) {
 	return s.open(stream)
 }
 
-// open
+// open opens a new stream and adds it to the session
 func (s *Session) open(stream *Stream) (*Stream, error) {
 	if _, err := s.writeFrame(NewFrame(SYN, stream.sid, stream.rid, 0), time.After(OpenCloseTimeout)); err != nil {
 		return stream, err
@@ -176,6 +177,7 @@ func (s *Session) open(stream *Stream) (*Stream, error) {
 	}
 }
 
+// IsClosed returns true if the session is closed
 func (s *Session) IsClosed() bool {
 	select {
 	case <-s.chDie:
@@ -185,6 +187,7 @@ func (s *Session) IsClosed() bool {
 	}
 }
 
+// recv reads incoming frames and notifies the appropriate stream
 func (s *Session) recv() {
 	var addr *net.UDPAddr
 	var err error
@@ -206,6 +209,7 @@ func (s *Session) recv() {
 
 		sidRid := fmt.Sprintf("%v%v", sid, rid)
 
+		// Switch case to handle different frame types
 		switch hdr.Flag() {
 		case SYN:
 			s.streamLock.Lock()
@@ -335,6 +339,7 @@ func (s *Session) send() {
 	}
 }
 
+// writeFrame writes a frame to session write background goroutine
 func (s *Session) writeFrame(f Frame, deadline <-chan time.Time) (n int, err error) {
 	req := writeRequest{
 		frame:  f,

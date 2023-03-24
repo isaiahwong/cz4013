@@ -130,7 +130,3 @@ A frame in transmission would have the byte arrangement as such:
 | NOP  | No operation                         |
 | FIN  | Terminates the stream connection     |
 
-## Example
-This section depicts a request response between a `client` and `server`
-1. `client` sends a SYNC
-
