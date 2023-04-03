@@ -337,6 +337,16 @@ func (a *App) MonitorUpdates() {
 		return nil
 	}
 
+	f := promptui.Prompt{
+		Label:    "Enter Flight ID",
+		Validate: common.ValidateInt,
+	}
+	flightID, err := f.Run()
+	if err != nil {
+		a.logger.WithError(err).Error(ReserveFlight)
+		return
+	}
+
 	ti := promptui.Prompt{
 		Label:    "Enter how long to monitor for (in minutes)",
 		Validate: validate,
@@ -357,7 +367,7 @@ func (a *App) MonitorUpdates() {
 	go a.onKeyStoke()
 
 	// Perform block RPC calls
-	err = a.c.MonitorUpdates(time.Duration(t)*time.Minute, a.keyStrokeCh)
+	err = a.c.MonitorUpdates(flightID, time.Duration(t)*time.Minute, a.keyStrokeCh)
 }
 
 func (a *App) ViewReservations() {

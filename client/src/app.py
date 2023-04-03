@@ -163,10 +163,13 @@ class App:
         stream.close()
         return rf
 
-    def monitor_updates(self, duration: int, blocking=True):
+    def monitor_updates(self, flightid: str, duration: int, blocking=True):
         """A function that calls the MonitorUpdates RPC and shows any changes to reserved flights"""
         method = "MonitorUpdates"
-        query = {"timestamp": str(int(futuretime(duration * 60) * 1000))}
+        query = {
+            "timestamp": str(int(futuretime(duration * 60) * 1000)),
+            "id": flightid,
+        }
         stream = self._send_only(None, method, query, None)
 
         def read():

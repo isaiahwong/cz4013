@@ -211,7 +211,7 @@ func (c *Client) CancelFlight(id string) (*rpc.ReserveFlight, error) {
 
 // MonitorUpdates is a rpc method that monitors updates for a duration.
 // The method is a blocking call
-func (c *Client) MonitorUpdates(duration time.Duration, interruptCh chan Placeholder) error {
+func (c *Client) MonitorUpdates(flightId string, duration time.Duration, interruptCh chan Placeholder) error {
 	method := "MonitorUpdates"
 	// Open a new stream
 	stream, err := c.open()
@@ -254,6 +254,7 @@ func (c *Client) MonitorUpdates(duration time.Duration, interruptCh chan Placeho
 
 	req := map[string]string{
 		"timestamp": fmt.Sprintf("%v", time.Now().Add(duration).Unix()*1000),
+		"id":        fmt.Sprintf("%v", flightId),
 	}
 	err = c.sendOnly(stream, method, req, &c.opts.deadline)
 

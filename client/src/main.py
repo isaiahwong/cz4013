@@ -143,8 +143,9 @@ def monitor_updates(app: App):
     It also provides a Command Line Interface with error checking."""
 
     try:
+        flightid = input("\nEnter Flight id: ")
         duration = int(input("Monitor updates Duration (minutes): "))
-        app.monitor_updates(duration, blocking=True)
+        app.monitor_updates(flightid, duration, blocking=True)
     except Exception as e:
         print(f"Error: {e}\n")
 

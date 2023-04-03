@@ -361,6 +361,15 @@ func (r *RPC) MonitorUpdates(addr string, m *Message, read Readable, write Writa
 		return r.error(method, ErrInvalidParams, fmt.Sprintf("%v: is invalid", t), read, write)
 	}
 
+	id, ok := m.Query["id"]
+	fid := int32(-1)
+	if ok && t != "" {
+		fid64, err := strconv.ParseInt(id, 10, 32)
+		if err == nil {
+			fid = int32(fid64)
+		}
+	}
+
 	// convert string unix timestamp to time.Time
 	monitorUntil, err := common.StrToUnixTime(t)
 	if err != nil {
@@ -396,6 +405,10 @@ func (r *RPC) MonitorUpdates(addr string, m *Message, read Readable, write Writa
 
 				flight := flightCh.flight
 				if flight == nil {
+					continue
+				}
+
+				if fid != -1 && fid != flight.ID {
 					continue
 				}
 
